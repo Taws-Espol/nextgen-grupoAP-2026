@@ -129,6 +129,23 @@ function App() {
     }
   };
 
+  const handleQuizComplete = (xpEarned) => {
+    if (user?.role === "participant") {
+      const updatedTeam = { ...user.team, phase: Math.min(5, user.team.phase + 1), xp: (user.team.xp || 0) + (xpEarned || 0) };
+      setUser(prev => ({ ...prev, team: updatedTeam }));
+
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "phase_complete", teamId: user.team.id, newPhase: updatedTeam.phase }));
+      } else if (useLocalStorage) {
+        const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
+        const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
+        localStorage.setItem("dq_teams", JSON.stringify(updated));
+      }
+
+      setScreen("mapa");
+    }
+  };
+
   if (!user) {
     if (screen === "lore") return <LoreScreen onStart={() => setScreen("login")} />;
     return <LoginScreen onParticipantLogin={handleParticipantLogin} onAdminLogin={handleAdminLogin} />;
@@ -158,6 +175,10 @@ function App() {
               onBackToMap={() => setScreen("mapa")}
               onComplete={() => {}}
             />
+          );
+        case "quiz":
+          return (
+            <QuizScreen onComplete={(xp) => handleQuizComplete(xp)} />
           );
         case "mapa":
         default:

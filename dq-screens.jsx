@@ -518,6 +518,7 @@ function QuizScreen({ onComplete }) {
   const [qIdx, setQIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [answered, setAnswered] = useState(false);
+  const [showQuestion, setShowQuestion] = useState(false);
   const [totalXP, setTotalXP] = useState(0);
   const [streak, setStreak] = useState(0);
   const [done, setDone] = useState(false);
@@ -527,7 +528,7 @@ function QuizScreen({ onComplete }) {
   const q = QUIZ_QUESTIONS[qIdx];
 
   const handleAnswer = (idx) => {
-    if (answered) return;
+    if (answered || !showQuestion) return;
     setSelected(idx);
     setAnswered(true);
     const correct = idx === q.ans;
@@ -543,6 +544,7 @@ function QuizScreen({ onComplete }) {
     setSelected(null);
     setAnswered(false);
     setShowXP(null);
+    setShowQuestion(false);
     setTimerKey(k => k+1);
   };
 
@@ -590,9 +592,9 @@ function QuizScreen({ onComplete }) {
         <div style={{ width:`${(qIdx/QUIZ_QUESTIONS.length)*100}%`, height:"100%", background:`linear-gradient(90deg,${C.cyan},${C.purple})`, borderRadius:2, transition:"width 0.4s" }}/>
       </div>
 
-      {/* Question */}
+      {/* Concept first; then question/options when user presses 'Mostrar pregunta' */}
       <Card className="fade-in" style={{ padding:28 }} glow={C.purple}>
-        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Concepto previo</div>
+        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>{showQuestion?"Concepto previo":"Concepto"}</div>
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           <div style={{ padding:16, borderRadius:14, background:`${C.cyan}10`, border:`1px solid ${C.cyan}30` }}>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
@@ -601,38 +603,47 @@ function QuizScreen({ onComplete }) {
             </div>
             <div style={{ color:C.muted, fontSize:14, lineHeight:1.5 }}>{q.conceptText}</div>
           </div>
-          <div style={{ padding:16, borderRadius:14, background:`rgba(255,255,255,0.03)`, border:`1px solid ${C.border}` }}>
-            <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>Pregunta</div>
-            <h2 style={{ fontSize:22, fontWeight:800, lineHeight:1.4 }}>{q.q}</h2>
-          </div>
+
+          {!showQuestion ? (
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <button onClick={() => setShowQuestion(true)} style={{ background:`linear-gradient(90deg,${C.cyan},${C.purple})`, border:"none", padding:"12px 20px", borderRadius:10, fontWeight:800, color:"#061022", cursor:"pointer" }}>Mostrar pregunta →</button>
+            </div>
+          ) : (
+            <div style={{ padding:16, borderRadius:14, background:`rgba(255,255,255,0.03)`, border:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>Pregunta</div>
+              <h2 style={{ fontSize:22, fontWeight:800, lineHeight:1.4 }}>{q.q}</h2>
+            </div>
+          )}
         </div>
       </Card>
 
-      {/* Options */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-        {q.opts.map((opt,i)=>{
-          const isCorrect = i===q.ans;
-          const isSelected = i===selected;
-          let bg = `${optColors[i]}12`, border = `${optColors[i]}30`, textColor = C.text;
-          if (answered) {
-            if (isCorrect) { bg=`${C.green}20`; border=C.green; textColor=C.green; }
-            else if (isSelected && !isCorrect) { bg=`${C.red}20`; border=C.red; textColor=C.red; }
-            else { bg="rgba(255,255,255,0.03)"; border="rgba(255,255,255,0.06)"; textColor=C.dim; }
-          }
-          return (
-            <button key={i} onClick={()=>handleAnswer(i)} disabled={answered}
-              className={isSelected&&!answered?"pop-in":""}
-              style={{ background:bg, border:`2px solid ${border}`, borderRadius:14, padding:"18px 20px",
-                cursor:answered?"default":"pointer", textAlign:"left", transition:"all 0.25s", display:"flex", alignItems:"center", gap:14 }}>
-              <div style={{ width:32, height:32, borderRadius:8, background:answered&&isCorrect?C.green:answered&&isSelected&&!isCorrect?C.red:`${optColors[i]}25`,
-                display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:answered?(isCorrect||isSelected)?C.text:C.dim:optColors[i], flexShrink:0 }}>
-                {answered ? (isCorrect?"✓":isSelected?"✗":String.fromCharCode(65+i)) : String.fromCharCode(65+i)}
-              </div>
-              <span style={{ fontWeight:600, fontSize:15, color:textColor }}>{opt}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Options shown only after concept revealed */}
+      {showQuestion && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+          {q.opts.map((opt,i)=>{
+            const isCorrect = i===q.ans;
+            const isSelected = i===selected;
+            let bg = `${optColors[i]}12`, border = `${optColors[i]}30`, textColor = C.text;
+            if (answered) {
+              if (isCorrect) { bg=`${C.green}20`; border=C.green; textColor=C.green; }
+              else if (isSelected && !isCorrect) { bg=`${C.red}20`; border=C.red; textColor=C.red; }
+              else { bg="rgba(255,255,255,0.03)"; border="rgba(255,255,255,0.06)"; textColor=C.dim; }
+            }
+            return (
+              <button key={i} onClick={()=>handleAnswer(i)} disabled={answered}
+                className={isSelected&&!answered?"pop-in":""}
+                style={{ background:bg, border:`2px solid ${border}`, borderRadius:14, padding:"18px 20px",
+                  cursor:answered?"default":"pointer", textAlign:"left", transition:"all 0.25s", display:"flex", alignItems:"center", gap:14 }}>
+                <div style={{ width:32, height:32, borderRadius:8, background:answered&&isCorrect?C.green:answered&&isSelected&&!isCorrect?C.red:`${optColors[i]}25`,
+                  display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:answered?(isCorrect||isSelected)?C.text:C.dim:optColors[i], flexShrink:0 }}>
+                  {answered ? (isCorrect?"✓":isSelected?"✗":String.fromCharCode(65+i)) : String.fromCharCode(65+i)}
+                </div>
+                <span style={{ fontWeight:600, fontSize:15, color:textColor }}>{opt}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Feedback */}
       {answered && (
@@ -1210,11 +1221,11 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
     },
     {
       id: 2,
-      title: "Encontrar Patrones",
-      desc: "Identifica tendencias en los datos.",
-      task: "Usa GRAFICOS para visualizar ingresos por canal.",
-      icon: "📈",
-      color: C.purple,
+      title: "Fase teórica",
+      desc: "Lee un concepto antes de cada pregunta y responde elige la opción correcta.",
+      task: "Completa el quiz teórico: lee el concepto y escoge la mejor opción.",
+      icon: "❓",
+      color: C.cyan,
     },
     {
       id: 3,
@@ -1352,9 +1363,16 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                   <Btn variant="primary" onClick={() => onNav("datasets")}>
                     📊 DATASETS
                   </Btn>
-                  <Btn variant="primary" onClick={() => onNav("graficos")}>
-                    📈 GRAFICOS
-                  </Btn>
+                  {/* For phase 2 show the theoretical quiz instead of opening GRAFICOS */}
+                  {phase.id === 2 ? (
+                    <Btn variant="primary" onClick={() => onNav("quiz")}>
+                      ❓ Fase Teórica (Quiz)
+                    </Btn>
+                  ) : (
+                    <Btn variant="primary" onClick={() => onNav("graficos")}>
+                      📈 GRAFICOS
+                    </Btn>
+                  )}
                   <Btn
                     variant="secondary"
                     disabled={phase.id === 1 && !phaseOneTutorialReady}
@@ -1696,5 +1714,5 @@ function AdminTeamsScreen({ teams }) {
 Object.assign(window, {
   MapaScreen, DatasetsScreen,
   LoreScreen, LoginScreen, ChartEditorScreen,
-  AdminLeaderboardScreen, AdminTeamsScreen,
+  QuizScreen, AdminLeaderboardScreen, AdminTeamsScreen,
 });
