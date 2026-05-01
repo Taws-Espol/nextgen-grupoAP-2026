@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DataQuest WiDS - Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: #0B0B1A;
+      color: #E8E8FF;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(157,110,248,0.3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(157,110,248,0.5); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+    
+    .fade-in { animation: fadeIn 0.3s ease forwards; }
+    .pop-in { animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .pulse { animation: pulse 2s infinite; }
+
+    button:hover { filter: brightness(1.1); }
+    button:active { transform: scale(0.97); }
+
+    input, textarea, select {
+      font-family: 'Space Grotesk', sans-serif;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #E8E8FF;
+      border-radius: 10px;
+      padding: 10px 14px;
+      outline: none;
+      font-size: 14px;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: rgba(157,110,248,0.5);
+      background: rgba(157,110,248,0.08);
+      box-shadow: 0 0 12px rgba(157,110,248,0.2);
+    }
+
+    .status-online { color: #00FF88; }
+    .status-offline { color: #FF6B6B; }
+    .animate-pulse { animation: pulse 2s infinite; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="dq-core.jsx"></script>
+  <script type="text/babel">
+// ═══════════════════════════════════════════════════════════════
+// ADMIN APP — Real-time Leaderboard with Polling + Storage Events
+// ═══════════════════════════════════════════════════════════════
+
+function AdminApp() {
+  const [teams, setTeams] = useState([]);
+  const [connected, setConnected] = useState(false);
+  const [useLocalStorage, setUseLocalStorage] = useState(false);
+  const [expandedTeamId, setExpandedTeamId] = useState(null);
+  const [stats, setStats] = useState({ total: 0, active: 0, completed: 0 });
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const wsRef = useRef(null);
+  const pollIntervalRef = useRef(null);
+
+  // POLLING: Auto-refresh leaderboard every 1 second
+  useEffect(() => {
+    const poll = () => {
+      loadTeamsFromLocalStorage();
+      setLastUpdate(Date.now());
+    };
+    
+    pollIntervalRef.current = setInterval(poll, 1000);
+    console.log("⏱️ Polling iniciado (cada 1 segundo)");
+    
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
+  // STORAGE LISTENER: Detect changes from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "dq_teams") {
+        console.log("🔄 Cambio detectado en otra tab, actualizando leaderboard");
+        loadTeamsFromLocalStorage();
+        setLastUpdate(Date.now());
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  // WEBSOCKET: Real-time connection with fallback
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}`;
+    
+    console.log("Admin intentando conectar a:", wsUrl);
+    
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (err) {
+      console.warn("WebSocket no disponible, usando localStorage");
+      setUseLocalStorage(true);
+      loadTeamsFromLocalStorage();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      if (ws && ws.readyState !== WebSocket.OPEN) {
+        console.warn("WebSocket timeout, usando localStorage + polling");
+        setUseLocalStorage(true);
+        setConnected(false);
+        ws.close();
+        loadTeamsFromLocalStorage();
+      }
+    }, 3000);
+
+    ws.onopen = () => {
+      clearTimeout(timeout);
+      console.log("✓ Admin WebSocket conectado");
+      setConnected(true);
+      setUseLocalStorage(false);
+      
+      ws.send(JSON.stringify({ type: "join_admin" }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log("Admin recibido:", message.type);
+        
+        switch (message.type) {
+          case "teams_snapshot":
+            setTeams(message.teams);
+            updateStats(message.teams);
+            setLastUpdate(Date.now());
+            break;
+            
+          case "team_update":
+            setTeams(prev => {
+              const existing = prev.find(t => t.id === message.team.id);
+              if (existing) {
+                const updated = prev.map(t => t.id === message.team.id ? message.team : t);
+                updateStats(updated);
+                setLastUpdate(Date.now());
+                return updated;
+              } else {
+                const updated = [...prev, message.team];
+                updateStats(updated);
+                setLastUpdate(Date.now());
+                return updated;
+              }
+            });
+            break;
+            
+          case "phase_completed":
+            setTeams(prev => {
+              const updated = prev.map(t => 
+                t.id === message.team.id ? message.team : t
+              );
+              updateStats(updated);
+              setLastUpdate(Date.now());
+              return updated;
+            });
+            setTimeout(() => {
+              setExpandedTeamId(message.team.id);
+            }, 100);
+            break;
+            
+          case "leaderboard_update":
+            setTeams(message.teams);
+            updateStats(message.teams);
+            setLastUpdate(Date.now());
+            break;
+        }
+      } catch (err) {
+        console.error("Parse error:", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      clearTimeout(timeout);
+      console.warn("Admin WebSocket error, fallback a localStorage:", err);
+      setConnected(false);
+      setUseLocalStorage(true);
+      loadTeamsFromLocalStorage();
+    };
+
+    ws.onclose = () => {
+      clearTimeout(timeout);
+      console.warn("Admin WebSocket cerrado");
+      setConnected(false);
+    };
+
+    wsRef.current = ws;
+    
+    return () => {
+      clearTimeout(timeout);
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+    };
+  }, []);
+
+  const loadTeamsFromLocalStorage = () => {
+    const saved = localStorage.getItem("dq_teams");
+    if (saved) {
+      try {
+        const teams = JSON.parse(saved);
+        setTeams(teams);
+        updateStats(teams);
+      } catch (err) {
+        console.error("Error cargando teams:", err);
+      }
+    }
+  };
+
+  const updateStats = (teamsList) => {
+    const newStats = {
+      total: teamsList.length,
+      active: teamsList.filter(t => t.connected).length,
+      completed: teamsList.filter(t => t.phase === 5).length
+    };
+    setStats(newStats);
+  };
+
+  const leaderboard = [...teams].sort((a, b) => {
+    if (b.phase !== a.phase) return b.phase - a.phase;
+    return b.xp - a.xp;
+  });
+
+  return (
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.bg }}>
+      {/* SIDEBAR */}
+      <div style={{ width: 240, background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: 20, borderBottom: `1px solid ${C.border}` }}>
+          <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8 }}>🛡️ Admin</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: connected ? C.green : useLocalStorage ? C.yellow : C.red, animation: "pulse 2s infinite" }} />
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {connected ? "🌐 WebSocket" : useLocalStorage ? "💾 Local Store" : "⚠️ Offline"}
+            </span>
+          </div>
+          <div style={{ fontSize: 9, color: C.dim, fontFamily: "Space Mono" }}>
+            Actualizado: {Math.floor((Date.now() - lastUpdate) / 1000)}s atrás
+          </div>
+        </div>
+        
+        <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ padding: 12, background: C.card, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.yellow }}>{stats.total}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Equipos</div>
+            </div>
+            <div style={{ padding: 12, background: C.card, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.green }}>{stats.active}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Activos</div>
+            </div>
+            <div style={{ padding: 12, background: C.card, borderRadius: 8, textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: C.cyan }}>{stats.completed}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Completados</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: 12, borderTop: `1px solid ${C.border}` }}>
+          <a href="/" style={{ display: "block", padding: 12, textAlign: "center", background: `${C.cyan}20`, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.cyan, textDecoration: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            ← Volver
+          </a>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "20px 32px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(135deg,${C.purple}10,${C.cyan}10)` }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>🏆 Leaderboard en Vivo</h1>
+          <p style={{ color: C.muted, fontSize: 14 }}>Actualizando en tiempo real • {teams.length} equipo{teams.length !== 1 ? "s" : ""}</p>
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto", padding: 32 }}>
+          {!connected && useLocalStorage && (
+            <div style={{ padding: 24, background: `${C.yellow}15`, border: `1px solid ${C.yellow}40`, borderRadius: 12, marginBottom: 24, textAlign: "center" }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>💾</div>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>Modo Local Storage</div>
+              <p style={{ color: C.muted, fontSize: 12 }}>Polling cada 1 segundo + Storage events</p>
+            </div>
+          )}
+
+          {leaderboard.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 48 }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Esperando equipos...</div>
+              <p style={{ color: C.muted }}>Los equipos aparecerán aquí cuando se registren</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {leaderboard.map((team, idx) => (
+                <div
+                  key={team.id}
+                  style={{
+                    padding: 20,
+                    background: idx < 3 ? `${C.purple}15` : C.card,
+                    border: `2px solid ${idx === 0 ? C.yellow : idx === 1 ? C.cyan : idx === 2 ? C.green : C.border}`,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    transform: expandedTeamId === team.id ? "scale(1.02)" : "scale(1)",
+                    boxShadow: expandedTeamId === team.id ? `0 0 20px ${C.purple}40` : "none"
+                  }}
+                  onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ display: "flex", gap: 16, flex: 1 }}>
+                      {/* Position Medal */}
+                      <div style={{ fontSize: 36, fontWeight: 800, minWidth: 50, textAlign: "center" }}>
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}.`}
+                      </div>
+
+                      {/* Team Info */}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                          <span style={{ fontSize: 32 }}>{team.avatar}</span>
+                          <div>
+                            <div style={{ fontSize: 18, fontWeight: 800 }}>{team.name}</div>
+                            <div style={{ fontSize: 12, color: C.muted }}>
+                              <span className={`status-${team.connected ? "online" : "offline"}`}>
+                                {team.connected ? "● En línea" : "● Offline"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bars */}
+                        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 600 }}>Fase</div>
+                            <div style={{ height: 12, background: `rgba(255,255,255,0.08)`, borderRadius: 6, overflow: "hidden" }}>
+                              <div style={{
+                                width: `${(team.phase / 5) * 100}%`,
+                                height: "100%",
+                                background: `linear-gradient(90deg,${C.cyan},${C.purple})`,
+                                transition: "width 0.5s ease"
+                              }} />
+                            </div>
+                            <div style={{ fontSize: 10, color: C.cyan, marginTop: 4, fontWeight: 700 }}>
+                              {team.phase}/5
+                            </div>
+                          </div>
+                          <div style={{ background: `${C.yellow}20`, padding: 8, borderRadius: 8, textAlign: "center" }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: C.yellow }}>{team.xp || 0}</div>
+                            <div style={{ fontSize: 10, color: C.muted }}>XP</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expand Arrow */}
+                    <div style={{ fontSize: 20, color: C.muted, transition: "transform 0.2s" }}>
+                      {expandedTeamId === team.id ? "▼" : "▶"}
+                    </div>
+                  </div>
+
+                  {/* Expanded Details */}
+                  {expandedTeamId === team.id && (
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.border}`, animation: "fadeIn 0.3s" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8 }}>
+                          <div style={{ fontSize: 10, color: C.muted, marginBottom: 6, fontWeight: 700 }}>Integrantes ({team.members.length})</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {team.members.map((m, i) => (
+                              <div key={i} style={{ fontSize: 11, color: C.light }}>• {m}</div>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ background: "rgba(255,255,255,0.02)", padding: 12, borderRadius: 8 }}>
+                          <div style={{ fontSize: 10, color: C.muted, marginBottom: 6, fontWeight: 700 }}>Estadísticas</div>
+                          <div style={{ fontSize: 12, color: C.light, display: "flex", flexDirection: "column", gap: 4 }}>
+                            <div><span style={{ color: C.muted }}>Estado:</span> {team.connected ? "✓ Conectado" : "✕ Offline"}</div>
+                            <div><span style={{ color: C.muted }}>Fase:</span> {team.phase}/5</div>
+                            <div><span style={{ color: C.muted }}>XP:</span> {team.xp || 0}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<AdminApp />);
+  </script>
+</body>
+</html>

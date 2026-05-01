@@ -36,7 +36,7 @@ const COLUMNS = [
 
 const PHASES = [
   { id:1, name:"Conoce tus datos",      icon:"🔍", duration:"30 min", color:"#9D6EF8", xpReward:200, desc:"¿Qué es un dataset? Filas, columnas y tipos de datos." },
-  { id:2, name:"Detective de patrones", icon:"📊", duration:"40 min", color:"#22D3EE", xpReward:400, desc:"Descubre tendencias y correlaciones con gráficos." },
+  { id:2, name:"Fase teórica",          icon:"❓", duration:"35 min", color:"#22D3EE", xpReward:350, desc:"Lee un concepto antes de responder y elige la situación correcta." },
   { id:3, name:"Tu análisis",           icon:"🧪", duration:"40 min", color:"#4ADE80", xpReward:400, desc:"Explora libremente con tus propias preguntas." },
   { id:4, name:"Pitch Builder",         icon:"🎤", duration:"30 min", color:"#F59E0B", xpReward:300, desc:"Construye tu presentación con tus hallazgos." },
   { id:5, name:"Pitch en vivo",         icon:"🚀", duration:"Live",   color:"#F87171", xpReward:500, desc:"¡Presenta ante todos y vota por el mejor equipo!" },
@@ -52,11 +52,136 @@ const LEADERBOARD_DATA = [
 ];
 
 const QUIZ_QUESTIONS = [
-  { q:"¿Cuál es el canal con más suscriptores en el dataset?", opts:["MrBeast","T-Series","Cocomelon","PewDiePie"], ans:1, xp:100, hint:"Pista: no es un canal de entretenimiento americano." },
-  { q:"¿Cuántas categorías diferentes de canales hay?", opts:["5","7","8","10"], ans:2, xp:80, hint:"Cuenta: Gaming, Music, Kids, Entertainment, Cooking, Tech, Sports, DIY, Education." },
-  { q:"¿Qué canal tiene el mayor promedio de vistas por video?", opts:["MrBeast","Dude Perfect","Cocomelon","T-Series"], ans:2, xp:120, hint:"Piensa: ¿quién tiene muchas vistas pero pocos videos?" },
-  { q:"¿Cuál categoría genera más ingresos en promedio?", opts:["Gaming","Music","Kids","Entertainment"], ans:2, xp:150, hint:"Los canales infantiles tienen muchísimas reproducciones automáticas." },
-  { q:"¿Cuántos canales en el dataset son de USA?", opts:["4","6","7","9"], ans:2, xp:100, hint:"Revisa: MrBeast, Cocomelon, Markiplier, Tasty, Bon Appétit, MKBHD, Dude Perfect." },
+  {
+    concept: "Insight",
+    conceptText: "Es un descubrimiento clave que no es obvio a primera vista, pero que explica el porqué de un comportamiento y ayuda a tomar una decisión.",
+    q: "¿Cuál de las siguientes situaciones describe mejor un 'Insight' en TawsTube?",
+    opts: [
+      "Contar que hoy se subieron 500 videos nuevos a la plataforma.",
+      "Descubrir que los videos de terror se ven más en la noche porque la gente busca emocionarse antes de dormir.",
+      "Ver que el logo de Tawsito es de color azul y amarillo."
+    ],
+    ans: 1,
+    xp: 100,
+    hint: "Un insight explica un comportamiento, no solo describe un dato visible."
+  },
+  {
+    concept: "Datos",
+    conceptText: "Son la materia prima: información, números y registros que la IA necesita procesar para aprender y dar resultados.",
+    q: "¿Cuál de estos es un ejemplo de 'Datos' necesarios para entrenar a la IA?",
+    opts: [
+      "La lista de los títulos, duración y número de likes de todos los videos del último año.",
+      "El nombre del programador que encendió la computadora hoy.",
+      "La marca de los audífonos que usa el analista de TawsTube."
+    ],
+    ans: 0,
+    xp: 100,
+    hint: "Busca información útil para aprender patrones, no un detalle aislado."
+  },
+  {
+    concept: "Patrones y tendencias",
+    conceptText: "Es un comportamiento que se repite de forma constante y permite predecir qué pasará después.",
+    q: "¿Cuál de estas opciones representa una 'Tendencia' dentro de la plataforma?",
+    opts: [
+      "Un solo video que se hizo viral porque salió el primer día del año.",
+      "Que todos los videos sobre 'Review de Celulares' suban sus visitas cada vez que sale un modelo nuevo.",
+      "Un comentario que puso un usuario diciendo 'Hola' en un video de música."
+    ],
+    ans: 1,
+    xp: 90,
+    hint: "Una tendencia se repite y se puede observar en varios casos, no en uno solo."
+  },
+  {
+    concept: "Métricas de retención",
+    conceptText: "Mide qué tan capaz es un video de mantener la atención de los espectadores desde que empieza hasta que termina.",
+    q: "¿Cuál de las siguientes situaciones muestra un problema de 'Retención'?",
+    opts: [
+      "Un video que tiene 1,000 visitas pero solo 2 comentarios.",
+      "Un video donde la mayoría de la gente cierra la pestaña antes de llegar a la mitad.",
+      "Un video que no se puede ver porque el usuario no tiene internet."
+    ],
+    ans: 1,
+    xp: 100,
+    hint: "La retención habla de cuánto tiempo se mantiene el interés, no de la conexión o los comentarios."
+  },
+  {
+    concept: "Saturación",
+    conceptText: "Es el punto donde hay tanto contenido repetido que la audiencia deja de prestar atención y el impacto disminuye.",
+    q: "¿Cuál de estos casos es un ejemplo de 'Saturación' en TawsTube?",
+    opts: [
+      "Un canal que sube un video a la semana y siempre tiene los mismos likes.",
+      "Un YouTuber que empieza a subir 10 videos al día y nota que la gente deja de verlos porque son demasiados.",
+      "Una computadora que se apaga porque tiene muchos archivos guardados."
+    ],
+    ans: 1,
+    xp: 90,
+    hint: "La saturación aparece cuando hay demasiado contenido similar y la audiencia se cansa."
+  },
+  {
+    concept: "Valores atípicos (Outliers)",
+    conceptText: "Es un dato que se sale totalmente de la norma o del promedio y puede arruinar un análisis si no se separa.",
+    q: "¿Cuál de estos datos debería ser marcado como un 'Outlier' por el equipo de Tawsito?",
+    opts: [
+      "Un video de un canal de noticias que tiene las mismas 5,000 vistas de siempre.",
+      "Un video de una abuelita tejiendo que normalmente tiene 100 vistas, pero hoy llegó a 5 millones porque lo compartió MrBeast.",
+      "Un video que dura exactamente 10 minutos con 0 segundos."
+    ],
+    ans: 1,
+    xp: 110,
+    hint: "Un outlier es un valor muy diferente al resto del comportamiento normal."
+  },
+  {
+    concept: "Correlación vs. causalidad",
+    conceptText: "Es la trampa de pensar que porque dos cosas cambian al mismo tiempo, una causa la otra, cuando puede existir un tercer factor oculto.",
+    q: "¿Cuál de estas opciones es un error de 'Causalidad'?",
+    opts: [
+      "Pensar que como los YouTubers famosos usan camisas blancas, si tú usas una camisa blanca te harás famoso automáticamente.",
+      "Saber que si mejoras el audio de tus videos, la gente los escuchará con más gusto.",
+      "Entender que si borras tu canal, ya no tendrás suscriptores."
+    ],
+    ans: 0,
+    xp: 110,
+    hint: "Correlación no siempre significa causa directa."
+  },
+  {
+    concept: "Sesgo (Bias)",
+    conceptText: "Es un error en los resultados de la IA que ocurre porque los datos usados para enseñarle estaban incompletos o favorecían solo a un grupo.",
+    q: "¿Cuál de estos es un ejemplo de 'Sesgo' en la IA de TawsTube?",
+    opts: [
+      "La IA recomienda videos de cocina a alguien que siempre busca recetas de pasteles.",
+      "La IA dice que 'nadie en el mundo ve videos de pesca' solo porque tú nunca le diste datos de pescadores.",
+      "La IA tarda 2 segundos en cargar las recomendaciones de la página de inicio."
+    ],
+    ans: 1,
+    xp: 100,
+    hint: "El sesgo aparece cuando los datos de entrenamiento no representan bien la realidad."
+  },
+  {
+    concept: "Limpieza de datos",
+    conceptText: "Es el trabajo de revisar la información para detectar y corregir errores, duplicados o valores imposibles antes de pasárselos a la IA.",
+    q: "¿Cuál de estas acciones forma parte del 'Data Cleaning'?",
+    opts: [
+      "Borrar de la lista un canal que registra 'un billón de suscriptores' cuando la población mundial es menor a eso.",
+      "Comprar un teclado nuevo para que el analista escriba más rápido.",
+      "Responder a todos los comentarios negativos de un video viral."
+    ],
+    ans: 0,
+    xp: 100,
+    hint: "Limpiar datos significa corregir errores y valores imposibles antes de analizarlos."
+  },
+  {
+    concept: "Caja negra (Explicabilidad)",
+    conceptText: "Es la falta de claridad cuando una IA toma una decisión pero no podemos ver ni entender los pasos lógicos que siguió.",
+    q: "¿Cuál de estas situaciones representa el problema de la 'Caja Negra'?",
+    opts: [
+      "Un algoritmo que te explica paso a paso por qué te recomendó un video de Minecraft.",
+      "Una IA que decide borrar 100 canales sin dar ninguna razón o prueba de que hayan roto las reglas.",
+      "Un video que tiene la pantalla totalmente oscura porque se grabó sin luz."
+    ],
+    ans: 1,
+    xp: 120,
+    hint: "La caja negra es cuando hay una decisión, pero no una explicación visible."
+  },
 ];
 
 const LESSON_SLIDES = [
@@ -359,13 +484,9 @@ function LineChart({ data, xKey, yKey, color=C.cyan }) {
 
 function Sidebar({ screen, onNav }) {
   const nav = [
-    { id:"dashboard",  icon:"🗺️",  label:"Mapa" },
-    { id:"lesson",     icon:"📖",  label:"Lección" },
-    { id:"quiz",       icon:"❓",  label:"Quiz" },
-    { id:"charts",     icon:"📊",  label:"Gráficos" },
-    { id:"analysis",   icon:"🧪",  label:"Análisis" },
-    { id:"pitch",      icon:"🎤",  label:"Pitch" },
-    { id:"leaderboard",icon:"🏆",  label:"Ranking" },
+    { id:"datasets", icon:"🧾", label:"Datasets" },
+    { id:"mapa",     icon:"🗺️", label:"Mapa" },
+    { id:"graficos", icon:"📊", label:"Graficos" },
   ];
   return (
     <div style={{ width:72, background:C.surface, borderRight:`1px solid ${C.border}`, display:"flex",
@@ -388,39 +509,27 @@ function Sidebar({ screen, onNav }) {
         );
       })}
       <div style={{ flex:1 }}/>
-      <div style={{ width:36, height:1, background:C.border, margin:"4px 0" }}/>
-      <button onClick={()=>onNav("admin")} title="Admin Panel"
-        style={{ width:58, height:50, border:"none", borderRadius:10, cursor:"pointer",
-          background:screen==="admin"?`${C.yellow}20`:"transparent", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:1 }}>
-        <span style={{ fontSize:17 }}>🛡️</span>
-        <span style={{ fontSize:9, color:screen==="admin"?C.yellow:C.muted, fontFamily:"Space Grotesk", fontWeight:700 }}>Admin</span>
-      </button>
     </div>
   );
 }
 
-function TopBar({ team, onLogout }) {
+function TopBar({ team, screen, onLogout }) {
+  const labels = { datasets:"DATASETS", mapa:"MAPA DE PROGRESO", graficos:"GRAFICOS" };
+  const moduleLabel = labels[screen] || "MAPA";
   return (
     <div style={{ height:54, background:C.surface, borderBottom:`1px solid ${C.border}`,
       display:"flex", alignItems:"center", padding:"0 20px", gap:12, flexShrink:0 }}>
       <span style={{ fontSize:22 }}>{team.avatar}</span>
       <div>
         <div style={{ color:C.text, fontWeight:700, fontSize:14, lineHeight:1.1 }}>{team.name}</div>
-        <div style={{ color:C.muted, fontSize:11 }}>Fase {team.phase} · {PHASES[team.phase-1]?.name}</div>
+        <div style={{ color:C.muted, fontSize:11 }}>Fase {team.phase}/5 · {moduleLabel}</div>
       </div>
       <div style={{ flex:1 }}/>
-      <div style={{ display:"flex", alignItems:"center", gap:6, background:`${C.yellow}15`, border:`1px solid ${C.yellow}25`, borderRadius:20, padding:"4px 12px" }}>
-        <span>⚡</span>
-        <span style={{ color:C.yellow, fontWeight:800, fontSize:14, fontFamily:"Space Mono" }}>{team.xp}</span>
-        <span style={{ color:C.muted, fontSize:11 }}>XP</span>
+      <div style={{ display:"flex", alignItems:"center", gap:6, background:`${C.green}15`, border:`1px solid ${C.green}25`, borderRadius:20, padding:"4px 12px" }}>
+        <span>📊</span>
+        <span style={{ color:C.green, fontWeight:800, fontSize:14 }}>Fase {team.phase}</span>
+        <span style={{ color:C.muted, fontSize:11 }}>/5</span>
       </div>
-      <div style={{ display:"flex", alignItems:"center", gap:6, background:`${C.purple}15`, border:`1px solid ${C.purple}25`, borderRadius:20, padding:"4px 12px" }}>
-        <span>🏆</span>
-        <span style={{ color:C.purple, fontWeight:800, fontSize:14 }}>#{team.rank}</span>
-      </div>
-      {team.badges.map((b,i)=>(
-        <span key={i} title="Badge" style={{ fontSize:20 }}>{b}</span>
-      ))}
       <button onClick={onLogout} style={{ border:"none", background:`rgba(255,255,255,0.05)`,
         color:C.muted, cursor:"pointer", fontSize:18, padding:"6px 8px", borderRadius:8 }}>⚙️</button>
     </div>

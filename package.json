@@ -1,0 +1,24 @@
+{
+  "name": "dataquest-wids",
+  "version": "1.0.0",
+  "description": "DataQuest WiDS - Real-time collaborative data analysis platform with Kahoot-style leaderboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "kahoot",
+    "websocket",
+    "real-time",
+    "data-analysis"
+  ],
+  "author": "DataQuest Team",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

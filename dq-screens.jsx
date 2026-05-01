@@ -1,11 +1,63 @@
 // dq-screens.jsx — All screen components
 
 // ═══════════════════════════════════════════
+// LORE SCREEN
+// ═══════════════════════════════════════════
+function LoreScreen({ onStart }) {
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center",
+      backgroundImage:`radial-gradient(ellipse at 15% 30%, ${C.purple}16 0%, transparent 55%), radial-gradient(ellipse at 85% 70%, ${C.cyan}14 0%, transparent 52%)` }}>
+
+      {["🛰️","📊","🤖","💡","📺","⚡"].map((e,i)=>(
+        <div key={i} style={{ position:"fixed", fontSize:26, opacity:0.09, userSelect:"none",
+          left:`${8+i*16}%`, top:`${18+Math.sin(i*1.4)*28}%`, animation:`pulse ${2.2+i*0.35}s infinite` }}>{e}</div>
+      ))}
+
+      <div className="fade-in" style={{ width:760, maxWidth:"92vw" }}>
+        <Card style={{ padding:34 }} glow={C.cyan}>
+          <div style={{ display:"flex", gap:20, alignItems:"flex-start" }}>
+            <div style={{ fontSize:54, lineHeight:1 }}>🛰️</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:12, color:C.cyan, fontWeight:800, letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>Briefing inicial</div>
+              <h1 style={{ fontSize:34, fontWeight:900, marginBottom:12, background:`linear-gradient(135deg,${C.cyan},${C.purple})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>
+                TawsTube necesita tu ayuda
+              </h1>
+              <p style={{ color:C.text, fontSize:16, lineHeight:1.7, marginBottom:10 }}>
+                La plataforma está creciendo demasiado rápido y nadie logra detectar a tiempo qué contenido está funcionando de verdad.
+              </p>
+              <p style={{ color:C.muted, fontSize:15, lineHeight:1.7, marginBottom:10 }}>
+                Tu equipo fue convocado para simular una unidad de analistas y entrenar una IA con datos reales. Solo con insights claros podrán tomar decisiones importantes para el futuro de los TawsTubers.
+              </p>
+              <p style={{ color:C.yellow, fontSize:14, fontWeight:700, marginBottom:18 }}>
+                Objetivo: descubrir patrones, justificar decisiones y activar la inteligencia de TawsTube.
+              </p>
+
+              <div style={{ display:"flex", flexWrap:"wrap", gap:10, marginBottom:22 }}>
+                <Chip label="Lore" color={C.cyan}/>
+                <Chip label="Misión de datos" color={C.purple}/>
+                <Chip label="Insights accionables" color={C.yellow}/>
+              </div>
+
+              <Btn onClick={onStart} size="lg" style={{ minWidth:260, justifyContent:"center" }}>
+                Comenzar registro del equipo →
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
 // LOGIN SCREEN
 // ═══════════════════════════════════════════
 const AVATARS = ["🚀","🕵️","💻","🥷","🏴‍☠️","👑","🦊","🐉","⚡","🎯","🌟","🔥","🦋","🎮","🤖","🦄"];
 
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onParticipantLogin, onAdminLogin }) {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPass, setAdminPass] = useState("");
+  const [adminError, setAdminError] = useState("");
   const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState(["","","",""]);
   const [avatar, setAvatar] = useState("🚀");
@@ -19,7 +71,16 @@ function LoginScreen({ onLogin }) {
 
   const submit = () => {
     if(!canNext2) { setError("¡Al menos 2 integrantes!"); return; }
-    onLogin({ name:teamName, members:members.filter(m=>m.trim()), avatar, xp:0, rank:2, phase:1, badges:[] });
+    onParticipantLogin({ name:teamName, members:members.filter(m=>m.trim()), avatar, xp:0, rank:2, phase:1, badges:[] });
+  };
+
+  const handleAdminSubmit = () => {
+    if (adminPass.trim().length >= 4) {
+      setAdminError("");
+      onAdminLogin();
+    } else {
+      setAdminError("Contraseña requerida (mín. 4 caracteres)");
+    }
   };
 
   return (
@@ -35,92 +96,134 @@ function LoginScreen({ onLogin }) {
       <div className="fade-in" style={{ width:480, padding:8 }}>
         {/* Header */}
         <div style={{ textAlign:"center", marginBottom:36 }}>
-          <div style={{ fontSize:52, marginBottom:8 }}>📊</div>
+          <div style={{ fontSize:52, marginBottom:8 }}>🧾</div>
           <h1 style={{ fontSize:36, fontWeight:800, background:`linear-gradient(135deg,${C.purple},${C.cyan})`,
             WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", marginBottom:4 }}>DataQuest WiDS</h1>
-          <p style={{ color:C.muted, fontSize:15 }}>Plataforma de análisis de datos · WiDS 2026</p>
+          <p style={{ color:C.muted, fontSize:15 }}>Registro oficial de escuadrones analistas · WiDS 2026</p>
         </div>
 
-        <Card style={{ padding:32 }} glow={C.purple}>
-          {/* Progress steps */}
-          <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:28 }}>
-            {[1,2,3].map((s,i)=>(
-              <React.Fragment key={s}>
-                <div style={{ width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
-                  background:step>=s?`linear-gradient(135deg,${C.purple},${C.cyan})`:"rgba(255,255,255,0.08)",
-                  fontSize:12, fontWeight:800, color:step>=s?"#fff":C.muted, transition:"all 0.3s", flexShrink:0 }}>{s}</div>
-                {i<2 && <div style={{ flex:1, height:2, background:step>s?`linear-gradient(90deg,${C.purple},${C.cyan})`:"rgba(255,255,255,0.08)", transition:"all 0.5s" }}/>}
-              </React.Fragment>
-            ))}
-          </div>
-
-          {step===1 && (
-            <div className="fade-in">
-              <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Nombre del equipo</h2>
-              <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>Elige un nombre épico para tu equipo de datos.</p>
-              <input value={teamName} onChange={e=>setTeamName(e.target.value)} placeholder="Ej: Data Detectives, Neural Ninjas..."
-                onKeyDown={e=>e.key==="Enter"&&canNext1&&setStep(2)}
-                style={{ marginBottom:24, fontSize:16, padding:"12px 16px" }}/>
-              <Btn onClick={()=>canNext1&&setStep(2)} disabled={!canNext1} size="lg" style={{ width:"100%", justifyContent:"center" }}>
-                Siguiente →
-              </Btn>
+        {/* Role Selection */}
+        {step === 1 && !isAdmin && (
+          <Card style={{ padding:32 }} glow={C.purple}>
+            <h2 style={{ fontSize:20, fontWeight:800, marginBottom:16, textAlign:"center" }}>¿Cuál es tu rol?</h2>
+            <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:24 }}>
+              <button onClick={() => setStep(2)} style={{ padding:16, background:`${C.cyan}15`, border:`2px solid ${C.cyan}`, borderRadius:12,
+                color:C.light, cursor:"pointer", textAlign:"left", fontSize:15, fontWeight:700, transition:"all 0.2s" }}>
+                <div style={{ marginBottom:4 }}>👥 Participante</div>
+                <div style={{ color:C.muted, fontSize:12, fontWeight:400 }}>Regístrate con tu equipo y participa en los análisis</div>
+              </button>
+              <button onClick={() => setIsAdmin(true)} style={{ padding:16, background:`${C.purple}15`, border:`2px solid ${C.purple}`, borderRadius:12,
+                color:C.light, cursor:"pointer", textAlign:"left", fontSize:15, fontWeight:700, transition:"all 0.2s" }}>
+                <div style={{ marginBottom:4 }}>🛡️ Administrador</div>
+                <div style={{ color:C.muted, fontSize:12, fontWeight:400 }}>Acceso a leaderboard y monitoreo de equipos</div>
+              </button>
             </div>
-          )}
+          </Card>
+        )}
 
-          {step===2 && (
-            <div className="fade-in">
-              <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Integrantes del equipo</h2>
-              <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>¿Quiénes van a descubrir los secretos de YouTube?</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:24 }}>
-                {members.map((m,i)=>(
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ width:32, height:32, borderRadius:8, background:`${C.purple}20`, display:"flex", alignItems:"center", justifyContent:"center", color:C.purple, fontWeight:800, fontSize:13, flexShrink:0 }}>{i+1}</div>
-                    <input value={m} onChange={e=>updateMember(i,e.target.value)} placeholder={`Integrante ${i+1}${i<2?" (requerido)":""}`}/>
-                  </div>
-                ))}
-              </div>
-              {error && <p style={{ color:C.red, fontSize:12, marginBottom:12 }}>{error}</p>}
-              <div style={{ display:"flex", gap:10 }}>
-                <Btn onClick={()=>setStep(1)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
-                <Btn onClick={()=>{if(canNext2){setError("");setStep(3);}else setError("¡Al menos 2 integrantes!")} } style={{ flex:2, justifyContent:"center" }}>Siguiente →</Btn>
-              </div>
+        {/* Admin Login */}
+        {isAdmin && (
+          <Card style={{ padding:32 }} glow={C.purple}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
+              <h2 style={{ fontSize:20, fontWeight:800 }}>🛡️ Panel Administrativa</h2>
+              <button onClick={() => setIsAdmin(false)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:C.muted }}>✕</button>
             </div>
-          )}
+            <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>Ingresa una contraseña para acceder al panel como administrador.</p>
+            <input value={adminPass} onChange={e=>setAdminPass(e.target.value)} placeholder="Contraseña de administrador"
+              type="password" onKeyDown={e=>e.key==="Enter"&&handleAdminSubmit()}
+              style={{ marginBottom:24, fontSize:16, padding:"12px 16px" }}/>
+            {adminError && <p style={{ color:C.red, fontSize:12, marginBottom:12 }}>{adminError}</p>}
+            <div style={{ display:"flex", gap:10 }}>
+              <Btn onClick={() => setIsAdmin(false)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
+              <Btn onClick={handleAdminSubmit} variant="primary" style={{ flex:2, justifyContent:"center" }}>Entrar →</Btn>
+            </div>
+          </Card>
+        )}
 
-          {step===3 && (
-            <div className="fade-in">
-              <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Avatar del equipo</h2>
-              <p style={{ color:C.muted, fontSize:13, marginBottom:18 }}>Elige el ícono que los represente.</p>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(8,1fr)", gap:8, marginBottom:24 }}>
-                {AVATARS.map(a=>(
-                  <button key={a} onClick={()=>setAvatar(a)}
-                    style={{ width:"100%", aspectRatio:"1", border:`2px solid ${avatar===a?C.purple:"transparent"}`,
-                      borderRadius:10, background:avatar===a?`${C.purple}20`:"rgba(255,255,255,0.04)", cursor:"pointer", fontSize:24,
-                      transition:"all 0.15s", boxShadow:avatar===a?`0 0 12px ${C.purple}40`:"none" }}>{a}</button>
-                ))}
-              </div>
+        {/* Participant Registration */}
+        {!isAdmin && step >= 2 && (
+          <Card style={{ padding:32 }} glow={C.purple}>
+            {/* Progress steps */}
+            <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:28 }}>
+              {[2,3,4].map((s,i)=>(
+                <React.Fragment key={s}>
+                  <div style={{ width:28, height:28, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center",
+                    background:step>=s?`linear-gradient(135deg,${C.purple},${C.cyan})`:"rgba(255,255,255,0.08)",
+                    fontSize:12, fontWeight:800, color:step>=s?"#fff":C.muted, transition:"all 0.3s", flexShrink:0 }}>{s-1}</div>
+                  {i<2 && <div style={{ flex:1, height:2, background:step>s?`linear-gradient(90deg,${C.purple},${C.cyan})`:"rgba(255,255,255,0.08)", transition:"all 0.5s" }}/>}
+                </React.Fragment>
+              ))}
+            </div>
 
-              {/* Preview */}
-              <div style={{ background:`${C.purple}10`, border:`1px solid ${C.purple}25`, borderRadius:12, padding:"12px 16px", marginBottom:20, display:"flex", alignItems:"center", gap:12 }}>
-                <span style={{ fontSize:36 }}>{avatar}</span>
-                <div>
-                  <div style={{ fontWeight:800, fontSize:16 }}>{teamName}</div>
-                  <div style={{ color:C.muted, fontSize:12 }}>{members.filter(m=>m).join(" · ")}</div>
+            {step===2 && (
+              <div className="fade-in">
+                <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Nombre del escuadrón</h2>
+                <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>Asigna el nombre oficial de tu equipo de analistas Taws.</p>
+                <input value={teamName} onChange={e=>setTeamName(e.target.value)} placeholder="Ej: Data Detectives, Neural Ninjas..."
+                  onKeyDown={e=>e.key==="Enter"&&canNext1&&setStep(3)}
+                  style={{ marginBottom:24, fontSize:16, padding:"12px 16px" }}/>
+                <div style={{ display:"flex", gap:10 }}>
+                  <Btn onClick={() => setStep(1)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
+                  <Btn onClick={()=>canNext1&&setStep(3)} disabled={!canNext1} style={{ flex:2, justifyContent:"center" }}>Siguiente →</Btn>
                 </div>
               </div>
+            )}
 
-              <div style={{ display:"flex", gap:10 }}>
-                <Btn onClick={()=>setStep(2)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
-                <Btn onClick={submit} variant="success" size="lg" style={{ flex:2, justifyContent:"center" }}>
-                  ¡Empezar aventura! 🚀
-                </Btn>
+            {step===3 && (
+              <div className="fade-in">
+                <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Integrantes del equipo</h2>
+                <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>Selecciona quienes ayudaran a Tawsito a entrenar la IA con insights confiables.</p>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:24 }}>
+                  {members.map((m,i)=>(
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <div style={{ width:32, height:32, borderRadius:8, background:`${C.purple}20`, display:"flex", alignItems:"center", justifyContent:"center", color:C.purple, fontWeight:800, fontSize:13, flexShrink:0 }}>{i+1}</div>
+                      <input value={m} onChange={e=>updateMember(i,e.target.value)} placeholder={`Integrante ${i+1}${i<2?" (requerido)":""}`}/>
+                    </div>
+                  ))}
+                </div>
+                {error && <p style={{ color:C.red, fontSize:12, marginBottom:12 }}>{error}</p>}
+                <div style={{ display:"flex", gap:10 }}>
+                  <Btn onClick={()=>setStep(2)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
+                  <Btn onClick={()=>{if(canNext2){setError("");setStep(4);}else setError("¡Al menos 2 integrantes!")} } style={{ flex:2, justifyContent:"center" }}>Siguiente →</Btn>
+                </div>
               </div>
-            </div>
-          )}
-        </Card>
+            )}
+
+            {step===4 && (
+              <div className="fade-in">
+                <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Avatar del equipo</h2>
+                <p style={{ color:C.muted, fontSize:13, marginBottom:18 }}>Elige su insignia para entrar al laboratorio de inteligencia de TawsTube.</p>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(8,1fr)", gap:8, marginBottom:24 }}>
+                  {AVATARS.map(a=>(
+                    <button key={a} onClick={()=>setAvatar(a)}
+                      style={{ width:"100%", aspectRatio:"1", border:`2px solid ${avatar===a?C.purple:"transparent"}`,
+                        borderRadius:10, background:avatar===a?`${C.purple}20`:"rgba(255,255,255,0.04)", cursor:"pointer", fontSize:24,
+                        transition:"all 0.15s", boxShadow:avatar===a?`0 0 12px ${C.purple}40`:"none" }}>{a}</button>
+                  ))}
+                </div>
+
+                {/* Preview */}
+                <div style={{ background:`${C.purple}10`, border:`1px solid ${C.purple}25`, borderRadius:12, padding:"12px 16px", marginBottom:20, display:"flex", alignItems:"center", gap:12 }}>
+                  <span style={{ fontSize:36 }}>{avatar}</span>
+                  <div>
+                    <div style={{ fontWeight:800, fontSize:16 }}>{teamName}</div>
+                    <div style={{ color:C.muted, fontSize:12 }}>{members.filter(m=>m).join(" · ")}</div>
+                  </div>
+                </div>
+
+                <div style={{ display:"flex", gap:10 }}>
+                  <Btn onClick={()=>setStep(3)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
+                  <Btn onClick={submit} variant="success" size="lg" style={{ flex:2, justifyContent:"center" }}>
+                    ¡Empezar aventura! 🚀
+                  </Btn>
+                </div>
+              </div>
+            )}
+          </Card>
+        )}
 
         <p style={{ textAlign:"center", color:C.dim, fontSize:12, marginTop:20 }}>
-          WiDS 2026 · Análisis de datos con YouTube 📺
+          WiDS 2026 · Registro de equipos para la misión TawsTube 📺
         </p>
       </div>
     </div>
@@ -142,7 +245,7 @@ function DashboardScreen({ team, onNav, onPhaseSelect }) {
         <h1 style={{ fontSize:28, fontWeight:800, marginBottom:4 }}>
           Bienvenida, <span style={{ background:`linear-gradient(135deg,${C.purple},${C.cyan})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>{team.name}</span> {team.avatar}
         </h1>
-        <p style={{ color:C.muted, fontSize:15 }}>Tu misión: analizar el dataset de YouTube y encontrar los mejores insights.</p>
+        <p style={{ color:C.muted, fontSize:15 }}>Tu misión: convertir datos de canales en insights accionables para guiar el futuro de TawsTube.</p>
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:20, flex:1 }}>
@@ -471,7 +574,7 @@ function QuizScreen({ onComplete }) {
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
         <div>
           <Chip label={`Pregunta ${qIdx+1} de ${QUIZ_QUESTIONS.length}`} color={C.cyan}/>
-          <h1 style={{ fontSize:22, fontWeight:800, marginTop:6 }}>❓ Quiz: Conoce tus datos</h1>
+          <h1 style={{ fontSize:22, fontWeight:800, marginTop:6 }}>❓ Fase teórica: concepto antes de responder</h1>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:16 }}>
           {streak >= 2 && <div style={{ background:`${C.red}20`, border:`1px solid ${C.red}30`, borderRadius:20, padding:"4px 12px", color:C.red, fontWeight:700, fontSize:13 }}>🔥 Racha ×{streak}</div>}
@@ -489,8 +592,20 @@ function QuizScreen({ onComplete }) {
 
       {/* Question */}
       <Card className="fade-in" style={{ padding:28 }} glow={C.purple}>
-        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Sobre el dataset de YouTube</div>
-        <h2 style={{ fontSize:22, fontWeight:800, lineHeight:1.4 }}>{q.q}</h2>
+        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Concepto previo</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          <div style={{ padding:16, borderRadius:14, background:`${C.cyan}10`, border:`1px solid ${C.cyan}30` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <span style={{ fontSize:20 }}>📘</span>
+              <h2 style={{ fontSize:20, fontWeight:800, lineHeight:1.3 }}>{q.concept}</h2>
+            </div>
+            <div style={{ color:C.muted, fontSize:14, lineHeight:1.5 }}>{q.conceptText}</div>
+          </div>
+          <div style={{ padding:16, borderRadius:14, background:`rgba(255,255,255,0.03)`, border:`1px solid ${C.border}` }}>
+            <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>Pregunta</div>
+            <h2 style={{ fontSize:22, fontWeight:800, lineHeight:1.4 }}>{q.q}</h2>
+          </div>
+        </div>
       </Card>
 
       {/* Options */}
@@ -543,31 +658,24 @@ function QuizScreen({ onComplete }) {
 // ═══════════════════════════════════════════
 // CHART EDITOR SCREEN (KEY SCREEN)
 // ═══════════════════════════════════════════
-function ChartEditorScreen({ onComplete, freeMode=false }) {
-  const hypotheses = [
-    { id:0, text:"¿Los canales con más suscriptores generan más ingresos?", xSuggestion:"subs", ySuggestion:"revenue", type:"scatter" },
-    { id:1, text:"¿Qué categoría de YouTube tiene más vistas en total?", xSuggestion:"category", ySuggestion:"views", type:"bar" },
-    { id:2, text:"¿Los canales con más videos tienen más vistas promedio?", xSuggestion:"videos", ySuggestion:"avgViews", type:"scatter" },
-    { id:3, text:"¿Cómo se distribuyen los ingresos por categoría?", xSuggestion:"category", ySuggestion:"revenue", type:"pie" },
-  ];
-
-  const [hypoIdx, setHypoIdx] = useState(0);
+function ChartEditorScreen({ onComplete, onVisit, onBackToMap, freeMode=false, tutorialMode=false }) {
   const [chartType, setChartType] = useState("bar");
   const [xAxis, setXAxis] = useState(null);
   const [yAxis, setYAxis] = useState(null);
   const [catFilter, setCatFilter] = useState("all");
-  const [conclusion, setConclusion] = useState("");
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [showXP, setShowXP] = useState(null);
-  const [userQuestion, setUserQuestion] = useState("");
 
-  const hypo = hypotheses[hypoIdx];
   const cats = ["all","Entertainment","Gaming","Music","Kids","Cooking","Tech","Sports","DIY","Education"];
-  const numCols = COLUMNS.filter(c=>c.type==="number");
-  const catCols = COLUMNS.filter(c=>c.type!=="number");
   const allCols = COLUMNS;
+
+  useEffect(() => {
+    if (onComplete) onComplete(200);
+  }, []);
+
+  useEffect(() => {
+    onVisit && onVisit();
+  }, []);
 
   const filteredData = catFilter==="all" ? YT_DATA : YT_DATA.filter(d=>d.category===catFilter);
 
@@ -604,41 +712,37 @@ function ChartEditorScreen({ onComplete, freeMode=false }) {
   const handleDropX = () => { if(dragging){setXAxis(dragging);setDragging(null);setDragOver(null);} };
   const handleDropY = () => { if(dragging){setYAxis(dragging);setDragging(null);setDragOver(null);} };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setShowXP(200);
-    setTimeout(()=>onComplete&&onComplete(200), 2500);
-  };
-
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
-      {showXP && <XPPop amount={showXP} onDone={()=>setShowXP(null)}/>}
-
-      {/* Top bar — hypothesis */}
+      {/* Top bar */}
       <div style={{ padding:"12px 20px", background:C.surface, borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
-        {freeMode ? (
-          <div style={{ display:"flex", gap:12, alignItems:"center" }}>
-            <span style={{ fontSize:20 }}>🧪</span>
-            <input value={userQuestion} onChange={e=>setUserQuestion(e.target.value)}
-              placeholder="Escribe tu pregunta de análisis... Ej: ¿Los canales de Gaming tienen más likes que los de Cooking?"
-              style={{ flex:1, background:"transparent", border:"none", fontSize:15, fontWeight:700, color:C.text, padding:0 }}/>
+        <div style={{ display:"flex", justifyContent:"space-between", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <span style={{ fontSize:20 }}>📊</span>
+          <span style={{ fontWeight:700, fontSize:15, color:C.text }}>Configura ejes, tipo de gráfico y filtros para explorar los datos.</span>
           </div>
-        ) : (
-          <div style={{ display:"flex", gap:12, alignItems:"center", flexWrap:"wrap" }}>
-            <div style={{ background:`${C.cyan}15`, border:`1px solid ${C.cyan}30`, borderRadius:10, padding:"8px 16px", display:"flex", alignItems:"center", gap:10, flex:1 }}>
-              <span style={{ fontSize:20 }}>🔍</span>
-              <span style={{ fontWeight:700, fontSize:15, color:C.text }}>{hypo.text}</span>
-            </div>
-            <div style={{ display:"flex", gap:6 }}>
-              {hypotheses.map((_,i)=>(
-                <button key={i} onClick={()=>{ setHypoIdx(i); setXAxis(null); setYAxis(null); setConclusion(""); }}
-                  style={{ width:28, height:28, borderRadius:6, border:"none", cursor:"pointer",
-                    background:i===hypoIdx?C.cyan:"rgba(255,255,255,0.08)", color:i===hypoIdx?"#0B1A1A":C.muted, fontWeight:700, fontSize:12 }}>{i+1}</button>
-              ))}
-            </div>
-          </div>
-        )}
+          {tutorialMode && onBackToMap && (
+            <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>
+          )}
+        </div>
       </div>
+
+      {tutorialMode && (
+        <div style={{ padding:"0 20px 12px" }}>
+          <Card style={{ padding:16, border:`1px solid ${C.purple}40`, background:`${C.purple}10` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+              <span style={{ fontSize:18 }}>🧭</span>
+              <div style={{ fontWeight:800, color:C.purple }}>Tutorial rápido de GRAFICOS</div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, fontSize:12, color:C.muted }}>
+              <div>1. Arrastra una columna numérica al eje Y para medirla.</div>
+              <div>2. Usa una columna de categoría o nombre en el eje X.</div>
+              <div>3. Cambia el tipo de gráfico según lo que quieras comparar.</div>
+              <div>4. Empieza simple: una sola métrica, una sola comparación.</div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Main 3-panel layout */}
       <div style={{ display:"grid", gridTemplateColumns:"200px 1fr 220px", flex:1, overflow:"hidden" }}>
@@ -694,20 +798,6 @@ function ChartEditorScreen({ onComplete, freeMode=false }) {
           <div style={{ flex:1, padding:"0 20px", display:"flex", flexDirection:"column", overflow:"hidden" }}>
             {renderChart()}
           </div>
-
-          {/* Conclusion */}
-          <div style={{ padding:"12px 16px", borderTop:`1px solid ${C.border}`, flexShrink:0 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:C.muted, marginBottom:6 }}>✍️ Su conclusión:</div>
-            <div style={{ display:"flex", gap:10, alignItems:"flex-end" }}>
-              <textarea value={conclusion} onChange={e=>setConclusion(e.target.value)} rows={2}
-                placeholder={freeMode?"¿Qué descubrieron con este gráfico?":"¿Qué les dice el gráfico sobre la hipótesis?"}
-                style={{ flex:1, resize:"none", fontSize:13, padding:"10px 14px", borderRadius:10 }}/>
-              <Btn onClick={handleSubmit} disabled={!xAxis||!yAxis||conclusion.length<10||submitted}
-                variant="success" style={{ flexShrink:0, height:60 }}>
-                {submitted?"¡Enviado! ✓":"Enviar +200XP"}
-              </Btn>
-            </div>
-          </div>
         </div>
 
         {/* RIGHT — Controls */}
@@ -742,17 +832,6 @@ function ChartEditorScreen({ onComplete, freeMode=false }) {
               ))}
             </div>
           </div>
-
-          {/* Quick suggestions */}
-          {!freeMode && (
-            <div>
-              <div style={{ fontSize:11, fontWeight:800, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>Sugerencia</div>
-              <button onClick={()=>{ setXAxis(hypo.xSuggestion); setYAxis(hypo.ySuggestion); setChartType(hypo.type); }}
-                style={{ width:"100%", padding:"10px 12px", background:`${C.yellow}10`, border:`1px solid ${C.yellow}25`, borderRadius:8, cursor:"pointer", color:C.yellow, fontSize:12, fontWeight:600, fontFamily:"Space Grotesk", textAlign:"left" }}>
-                💡 Autocompletar ejes sugeridos
-              </button>
-            </div>
-          )}
 
           {/* Data summary */}
           <div style={{ background:`${C.green}10`, border:`1px solid ${C.green}20`, borderRadius:10, padding:12 }}>
@@ -1098,8 +1177,524 @@ function AdminScreen() {
   );
 }
 
+// ═══════════════════════════════════════════
+// NEW CORE MODULES: MAPA / DATASETS / GRAFICOS
+// ═══════════════════════════════════════════
+
+function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, phaseOneTutorialProgress={ datasets:false, graficos:false, confirmed:false }, onConfirmPhaseOneTutorial }) {
+  const tutorialStep = !phaseOneTutorialProgress.datasets
+    ? 1
+    : !phaseOneTutorialProgress.graficos
+      ? 2
+      : !phaseOneTutorialProgress.confirmed
+        ? 3
+        : 4;
+
+  const tutorialFlow = {
+    1: { title: "Paso 1 · Explora la tabla", copy: "Abre DATASETS y mira qué columnas tienes disponibles. No busques respuestas todavía; solo ubica el terreno.", color: C.cyan, icon: "🧭" },
+    2: { title: "Paso 2 · Construye una vista", copy: "Ahora abre GRAFICOS y prueba una métrica simple. Empieza con una comparación fácil de leer.", color: C.purple, icon: "📊" },
+    3: { title: "Paso 3 · Confirma tu lectura", copy: "Si ya viste ambos módulos, confirma la guía para desbloquear la fase 1.", color: C.green, icon: "✅" },
+    4: { title: "Guía completada", copy: "Ya puedes completar la fase 1 y avanzar al siguiente reto.", color: C.green, icon: "🚀" },
+  };
+
+  const tutorialState = tutorialFlow[tutorialStep];
+
+  const PHASES = [
+    {
+      id: 1,
+      title: "Tutorial de Datasets y Gráficos",
+      desc: "Aprende a leer columnas, filtrar datos y construir tu primer gráfico.",
+      task: "Abre DATASETS para conocer la tabla y luego pasa a GRAFICOS para visualizar una métrica simple.",
+      icon: "🔎",
+      color: C.cyan,
+    },
+    {
+      id: 2,
+      title: "Encontrar Patrones",
+      desc: "Identifica tendencias en los datos.",
+      task: "Usa GRAFICOS para visualizar ingresos por canal.",
+      icon: "📈",
+      color: C.purple,
+    },
+    {
+      id: 3,
+      title: "Analizar Categorías",
+      desc: "Descubre distribuciones y segmentación.",
+      task: "Filtra DATASETS por categoría y analiza patrones.",
+      icon: "🏷️",
+      color: C.green,
+    },
+    {
+      id: 4,
+      title: "Descubrir Correlaciones",
+      desc: "Encuentra relaciones entre métricas clave.",
+      task: "Crea gráficos de dispersión en GRAFICOS.",
+      icon: "🔗",
+      color: C.yellow,
+    },
+    {
+      id: 5,
+      title: "Presentar Hallazgos",
+      desc: "Resume tus descubrimientos principales.",
+      task: "Documenta los 3 insights más importantes.",
+      icon: "🎯",
+      color: C.pink,
+    },
+  ];
+
+  return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:24 }}>
+      <div>
+        <h1 style={{ fontSize:28, fontWeight:800, marginBottom:4 }}>
+          Mapa de Fases de <span style={{ background:`linear-gradient(135deg,${C.purple},${C.cyan})`, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>{team.name}</span>
+        </h1>
+        <p style={{ color:C.muted, fontSize:15 }}>Recorrido de análisis: 5 fases de descubrimiento usando DATASETS y GRAFICOS como herramientas.</p>
+      </div>
+
+      <Card style={{ padding:18 }} glow={C.cyan}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.muted }}>Progreso de fases</div>
+          <div style={{ fontFamily:"Space Mono", fontWeight:800, color:C.cyan }}>Fase {team.phase}/5</div>
+        </div>
+        <div style={{ height:10, background:"rgba(255,255,255,0.08)", borderRadius:8, overflow:"hidden" }}>
+          <div style={{ width:`${(team.phase / 5) * 100}%`, height:"100%", background:`linear-gradient(90deg,${C.cyan},${C.purple})`, transition:"width 0.4s" }}/>
+        </div>
+      </Card>
+
+      {team.phase === 1 && (
+        <Card key={tutorialStep} style={{ padding:18, border:`1px solid ${tutorialState.color}40`, background:`${tutorialState.color}10`, animation:"fadeIn 0.25s ease" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:14, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+                <span style={{ fontSize:20 }}>{tutorialState.icon}</span>
+                <div style={{ fontSize:16, fontWeight:800 }}>{tutorialState.title}</div>
+              </div>
+              <div style={{ color:C.muted, fontSize:13 }}>{tutorialState.copy}</div>
+            </div>
+            <Chip label={phaseOneTutorialReady ? "Listo para completar" : `Paso ${tutorialStep}/3`} color={phaseOneTutorialReady ? C.green : tutorialState.color} />
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, marginBottom:14 }}>
+            <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.datasets ? `${C.green}18` : tutorialStep === 1 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.datasets ? C.green : tutorialStep === 1 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 1 && !phaseOneTutorialProgress.datasets ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 1 ? "fadeIn 0.25s ease" : "none" }}>
+              <div style={{ fontWeight:800, marginBottom:6 }}>1. Explora la tabla</div>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Abre DATASETS para revisar columnas, filtros y ordenamiento.</div>
+              <Btn variant={phaseOneTutorialProgress.datasets ? "success" : "primary"} size="sm" onClick={() => onNav("datasets")}>
+                {phaseOneTutorialProgress.datasets ? "Visto" : "Abrir DATASETS"}
+              </Btn>
+            </div>
+            <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.graficos ? `${C.green}18` : tutorialStep === 2 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.graficos ? C.green : tutorialStep === 2 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 2 && !phaseOneTutorialProgress.graficos ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 2 ? "fadeIn 0.25s ease" : "none" }}>
+              <div style={{ fontWeight:800, marginBottom:6 }}>2. Crea un gráfico</div>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Abre GRAFICOS y arrastra una métrica numérica al eje Y.</div>
+              <Btn variant={phaseOneTutorialProgress.graficos ? "success" : "primary"} size="sm" onClick={() => onNav("graficos")}>
+                {phaseOneTutorialProgress.graficos ? "Visto" : "Abrir GRAFICOS"}
+              </Btn>
+            </div>
+            <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.confirmed ? `${C.green}18` : tutorialStep === 3 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.confirmed ? C.green : tutorialStep === 3 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 3 && !phaseOneTutorialProgress.confirmed ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 3 ? "fadeIn 0.25s ease" : "none" }}>
+              <div style={{ fontWeight:800, marginBottom:6 }}>3. Confirma que entendiste</div>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Cuando ya abriste ambos módulos, confirma para desbloquear la fase.</div>
+              <Btn
+                variant={phaseOneTutorialProgress.confirmed ? "success" : "secondary"}
+                size="sm"
+                disabled={!phaseOneTutorialProgress.datasets || !phaseOneTutorialProgress.graficos || phaseOneTutorialProgress.confirmed}
+                onClick={() => onConfirmPhaseOneTutorial && onConfirmPhaseOneTutorial()}
+              >
+                {phaseOneTutorialProgress.confirmed ? "Confirmado" : "Confirmar guía"}
+              </Btn>
+            </div>
+          </div>
+
+          <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.muted }}>
+            <span style={{ color:tutorialState.color, fontSize:14 }}>{tutorialState.icon}</span>
+            <span>
+            Estado: {phaseOneTutorialProgress.datasets ? "DATASETS listo" : "DATASETS pendiente"} · {phaseOneTutorialProgress.graficos ? "GRAFICOS listo" : "GRAFICOS pendiente"} · {phaseOneTutorialProgress.confirmed ? "Guía confirmada" : "Guía pendiente"}
+            </span>
+          </div>
+        </Card>
+      )}
+
+      <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        {PHASES.map((phase, idx) => {
+          const isActive = team.phase === phase.id;
+          const isCompleted = team.phase > phase.id;
+          const isLocked = team.phase < phase.id;
+
+          return (
+            <Card
+              key={phase.id}
+              style={{
+                padding:18,
+                border:`2px solid ${isActive ? phase.color : isCompleted ? C.green : isLocked ? C.border : C.border}`,
+                background:isActive ? `${phase.color}12` : isCompleted ? `${C.green}08` : isLocked ? "rgba(255,255,255,0.02)" : C.card,
+                opacity: isLocked ? 0.6 : 1,
+                transition:"all 0.3s",
+              }}
+            >
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+                <div style={{ display:"flex", gap:12, flex:1 }}>
+                  <div style={{ fontSize:28 }}>{phase.icon}</div>
+                  <div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                      <div style={{ fontSize:16, fontWeight:800 }}>Fase {phase.id}: {phase.title}</div>
+                      {isCompleted && <Chip label="✓ Completado" color={C.green} size="sm" />}
+                      {isActive && <Chip label="Actual" color={phase.color} size="sm" />}
+                      {isLocked && <Chip label="Bloqueado" color={C.muted} size="sm" />}
+                    </div>
+                    <div style={{ color:C.muted, fontSize:13, marginBottom:8 }}>{phase.desc}</div>
+                    <div style={{ fontSize:12, color:C.muted, background:"rgba(255,255,255,0.03)", padding:"8px 12px", borderRadius:6 }}>
+                      <strong>Tarea:</strong> {phase.task}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {isActive && (
+                <div style={{ display:"flex", gap:10, marginTop:14, paddingTop:14, borderTop:`1px solid ${phase.color}40` }}>
+                  <Btn variant="primary" onClick={() => onNav("datasets")}>
+                    📊 DATASETS
+                  </Btn>
+                  <Btn variant="primary" onClick={() => onNav("graficos")}>
+                    📈 GRAFICOS
+                  </Btn>
+                  <Btn
+                    variant="secondary"
+                    disabled={phase.id === 1 && !phaseOneTutorialReady}
+                    onClick={() => onPhaseComplete && onPhaseComplete()}
+                  >
+                    {phase.id === 1 && !phaseOneTutorialReady ? "Abre DATASETS y GRAFICOS primero" : "Fase completada →"}
+                  </Btn>
+                </div>
+              )}
+              {isCompleted && (
+                <div style={{ display:"flex", gap:10, marginTop:14, paddingTop:14, borderTop:`1px solid ${C.green}40` }}>
+                  <Btn variant="secondary" onClick={() => onNav("datasets")}>
+                    📊 Revisar DATASETS
+                  </Btn>
+                  <Btn variant="secondary" onClick={() => onNav("graficos")}>
+                    📈 Revisar GRAFICOS
+                  </Btn>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+
+      {team.phase >= 5 && (
+        <Card style={{ padding:20, background:`linear-gradient(135deg,${C.green}20,${C.cyan}20)`, border:`1px solid ${C.green}` }} glow={C.green}>
+          <div style={{ fontSize:20, fontWeight:800, marginBottom:8, display:"flex", alignItems:"center", gap:8 }}>
+            🎉 ¡Análisis completado!
+          </div>
+          <p style={{ color:C.muted, fontSize:14 }}>
+            Has recorrido todas las fases de análisis de TawsTube. Tus hallazgos han ayudado a entender mejor los datos de contenido de video.
+          </p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [country, setCountry] = useState("all");
+  const [sortKey, setSortKey] = useState("views");
+  const [sortDir, setSortDir] = useState("desc");
+
+  useEffect(() => { onVisit && onVisit(); }, []);
+
+  const categories = ["all", ...new Set(YT_DATA.map(d => d.category))];
+  const countries = ["all", ...new Set(YT_DATA.map(d => d.country))];
+
+  const filtered = YT_DATA.filter(d => {
+    const txt = search.trim().toLowerCase();
+    const matchText = !txt || d.channel.toLowerCase().includes(txt) || d.category.toLowerCase().includes(txt) || d.country.toLowerCase().includes(txt);
+    const matchCategory = category === "all" || d.category === category;
+    const matchCountry = country === "all" || d.country === country;
+    return matchText && matchCategory && matchCountry;
+  });
+
+  const sorted = [...filtered].sort((a,b) => {
+    const va = a[sortKey];
+    const vb = b[sortKey];
+    const cmp = typeof va === "number" && typeof vb === "number"
+      ? va - vb
+      : String(va).localeCompare(String(vb));
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  const headers = [
+    { key:"channel", label:"Canal" },
+    { key:"category", label:"Categoría" },
+    { key:"country", label:"País" },
+    { key:"subs", label:"Subs (M)" },
+    { key:"views", label:"Vistas (M)" },
+    { key:"videos", label:"Videos" },
+    { key:"avgViews", label:"Avg/video (M)" },
+    { key:"likes", label:"Likes %" },
+    { key:"revenue", label:"Ingresos (M$)" },
+  ];
+
+  const toggleSort = (k) => {
+    if (sortKey === k) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("desc"); }
+  };
+
+  return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:14, flexWrap:"wrap" }}>
+        <div>
+          <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4 }}>DATASETS</h1>
+          <p style={{ color:C.muted, fontSize:14 }}>Tabla interactiva para explorar datos con filtros, búsqueda y ordenamiento.</p>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+          <Chip label={`${sorted.length} filas visibles`} color={C.cyan} />
+          {tutorialMode && onBackToMap && <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>}
+        </div>
+      </div>
+
+      {tutorialMode && (
+        <Card style={{ padding:16, border:`1px solid ${C.cyan}40`, background:`${C.cyan}10` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+            <span style={{ fontSize:18 }}>🎓</span>
+            <div style={{ fontWeight:800, color:C.cyan }}>Tutorial rápido de DATASETS</div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, fontSize:12, color:C.muted }}>
+            <div>1. Busca un canal, país o categoría para ubicarte en la tabla.</div>
+            <div>2. Filtra los datos para reducir el ruido y comparar grupos.</div>
+            <div>3. Ordena por vistas, subs o ingresos para encontrar patrones.</div>
+            <div>4. Después ve a GRAFICOS y convierte esa comparación en una visualización.</div>
+          </div>
+        </Card>
+      )}
+
+      <Card style={{ padding:14 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1.3fr 1fr 1fr auto", gap:10 }}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por canal, categoría o país" />
+          <select value={category} onChange={e=>setCategory(e.target.value)}>
+            {categories.map(c => <option key={c} value={c}>{c === "all" ? "Todas las categorías" : c}</option>)}
+          </select>
+          <select value={country} onChange={e=>setCountry(e.target.value)}>
+            {countries.map(c => <option key={c} value={c}>{c === "all" ? "Todos los países" : c}</option>)}
+          </select>
+          <Btn variant="secondary" onClick={() => { setSearch(""); setCategory("all"); setCountry("all"); setSortKey("views"); setSortDir("desc"); }}>
+            Reset
+          </Btn>
+        </div>
+      </Card>
+
+      <Card style={{ overflowX:"auto" }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", minWidth:980 }}>
+          <thead>
+            <tr style={{ background:`${C.purple}12` }}>
+              {headers.map(h => {
+                const active = sortKey === h.key;
+                return (
+                  <th key={h.key} onClick={() => toggleSort(h.key)}
+                    style={{ padding:"10px 12px", textAlign:"left", cursor:"pointer", fontSize:12, color:active ? C.purple : C.muted, borderBottom:`1px solid ${C.border}` }}>
+                    {h.label} {active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((d, i) => (
+              <tr key={d.id} style={{ borderBottom:`1px solid ${C.border2}`, background:i % 2 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                <td style={{ padding:"9px 12px", fontWeight:700 }}>{d.channel}</td>
+                <td style={{ padding:"9px 12px" }}><Chip label={d.category} color={C.cyan} size="sm" /></td>
+                <td style={{ padding:"9px 12px", color:C.muted }}>{d.country}</td>
+                <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.subs}</td>
+                <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.views.toLocaleString()}</td>
+                <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.videos.toLocaleString()}</td>
+                <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.avgViews}</td>
+                <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.likes}%</td>
+                <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>${d.revenue}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// ADMIN: LEADERBOARD
+// ═══════════════════════════════════════════
+function AdminLeaderboardScreen({ teams }) {
+  const sorted = [...teams].sort((a, b) => {
+    if (b.phase !== a.phase) return b.phase - a.phase;
+    return b.xp - a.xp;
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card style={{ padding: 20, background: `linear-gradient(135deg,${C.purple}20,${C.cyan}20)`, border: `1px solid ${C.purple}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>🏆 Top Equipos</div>
+            <p style={{ color: C.muted, fontSize: 13 }}>Ranking por fase completada y experiencia acumulada</p>
+          </div>
+          <div style={{ fontSize: 48 }}>📊</div>
+        </div>
+      </Card>
+
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <thead>
+            <tr style={{ background: `${C.purple}15`, borderBottom: `1px solid ${C.border}` }}>
+              <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 800, color: C.muted }}>Posición</th>
+              <th style={{ padding: "12px 16px", textAlign: "left", fontWeight: 800, color: C.muted }}>Equipo</th>
+              <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 800, color: C.muted }}>Integrantes</th>
+              <th style={{ padding: "12px 16px", textAlign: "center", fontWeight: 800, color: C.muted }}>Fase</th>
+              <th style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: C.muted }}>XP</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ padding: "24px", textAlign: "center", color: C.muted }}>
+                  Sin equipos registrados aún
+                </td>
+              </tr>
+            ) : (
+              sorted.map((team, idx) => (
+                <tr key={team.id} style={{ borderBottom: `1px solid ${C.border}`, background: idx < 3 ? `${C.purple}08` : "transparent" }}>
+                  <td style={{ padding: "12px 16px", textAlign: "left", fontWeight: 800, color: idx === 0 ? C.yellow : idx === 1 ? C.cyan : idx === 2 ? C.green : C.light }}>
+                    {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
+                  </td>
+                  <td style={{ padding: "12px 16px", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 20 }}>{team.avatar}</span>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{team.name}</div>
+                        <div style={{ color: C.muted, fontSize: 11 }}>{team.members.length} miembro{team.members.length !== 1 ? "s" : ""}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: "12px 16px", textAlign: "center", color: C.muted, fontSize: 12 }}>
+                    {team.members.join(", ")}
+                  </td>
+                  <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                    <Chip label={`Fase ${team.phase}/5`} color={team.phase === 5 ? C.green : team.phase >= 3 ? C.cyan : C.muted} size="sm" />
+                  </td>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontFamily: "Space Mono", fontWeight: 700 }}>
+                    {team.xp.toLocaleString()} XP
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      {sorted.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <Card style={{ padding: 16, textAlign: "center", background: `${C.cyan}10`, border: `1px solid ${C.cyan}25` }}>
+            <div style={{ fontSize: 24, marginBottom: 4 }}>📊</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{sorted.length}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>Equipos Totales</div>
+          </Card>
+          <Card style={{ padding: 16, textAlign: "center", background: `${C.purple}10`, border: `1px solid ${C.purple}25` }}>
+            <div style={{ fontSize: 24, marginBottom: 4 }}>👥</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{sorted.reduce((sum, t) => sum + t.members.length, 0)}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>Participantes</div>
+          </Card>
+          <Card style={{ padding: 16, textAlign: "center", background: `${C.green}10`, border: `1px solid ${C.green}25` }}>
+            <div style={{ fontSize: 24, marginBottom: 4 }}>✅</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{sorted.filter(t => t.phase === 5).length}</div>
+            <div style={{ fontSize: 12, color: C.muted }}>Completados</div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// ADMIN: EQUIPOS DETALLADOS
+// ═══════════════════════════════════════════
+function AdminTeamsScreen({ teams }) {
+  const [expandedId, setExpandedId] = useState(null);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {teams.length === 0 ? (
+        <Card style={{ padding: 40, textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Sin equipos registrados</div>
+          <p style={{ color: C.muted }}>Los equipos aparecerán aquí cuando se registren</p>
+        </Card>
+      ) : (
+        teams.map(team => (
+          <Card
+            key={team.id}
+            style={{
+              padding: 20,
+              cursor: "pointer",
+              background: expandedId === team.id ? `${C.purple}10` : C.card,
+              border: `1px solid ${expandedId === team.id ? C.purple : C.border}`,
+              transition: "all 0.2s",
+            }}
+            onClick={() => setExpandedId(expandedId === team.id ? null : team.id)}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ display: "flex", gap: 16, flex: 1 }}>
+                <div style={{ fontSize: 40 }}>{team.avatar}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                    <div style={{ fontSize: 18, fontWeight: 800 }}>{team.name}</div>
+                    <Chip label={`Fase ${team.phase}/5`} color={team.phase === 5 ? C.green : team.phase >= 3 ? C.cyan : C.muted} size="sm" />
+                  </div>
+                  <div style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>
+                    {team.members.length} integrante{team.members.length !== 1 ? "s" : ""} · {team.xp.toLocaleString()} XP
+                  </div>
+
+                  {expandedId === team.id && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 600 }}>Progreso</div>
+                          <div style={{ height: 8, background: `rgba(255,255,255,0.08)`, borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ width: `${(team.phase / 5) * 100}%`, height: "100%", background: `linear-gradient(90deg,${C.cyan},${C.purple})` }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Fase {team.phase}/5</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 600 }}>Experiencia</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: C.yellow }}>{team.xp.toLocaleString()} XP</div>
+                        </div>
+                      </div>
+
+                      <div style={{ background: `rgba(255,255,255,0.02)`, borderRadius: 8, padding: 12 }}>
+                        <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, fontWeight: 600 }}>Integrantes</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          {team.members.map((member, idx) => (
+                            <div key={idx} style={{ fontSize: 12, color: C.light, display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontWeight: 700, color: C.purple, width: 20 }}>#{idx + 1}</span>
+                              {member}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ fontSize: 18, color: C.muted, transition: "transform 0.2s" }}>
+                {expandedId === team.id ? "▼" : "▶"}
+              </div>
+            </div>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+}
+
 // Export all screens
 Object.assign(window, {
-  LoginScreen, DashboardScreen, LessonScreen, QuizScreen,
-  ChartEditorScreen, PitchBuilderScreen, LeaderboardScreen, AdminScreen,
+  MapaScreen, DatasetsScreen,
+  LoreScreen, LoginScreen, ChartEditorScreen,
+  AdminLeaderboardScreen, AdminTeamsScreen,
 });
