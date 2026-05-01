@@ -1,12 +1,86 @@
 // dq-app.jsx — Main App component + mount
 
+function loadSavedSession() {
+  try {
+    const raw = localStorage.getItem("dq_session_v1");
+    if (!raw) return { user: null, screen: "lore", phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false }, missionProgress: { missionIdx: 0 } };
+
+    const parsed = JSON.parse(raw);
+    return {
+      user: parsed.user || null,
+      screen: parsed.screen || (parsed.user?.role === "participant" ? "mapa" : "lore"),
+      phaseOneTutorialProgress: parsed.phaseOneTutorialProgress || { datasets: false, graficos: false, confirmed: false },
+      missionProgress: parsed.missionProgress || { missionIdx: 0 },
+    };
+  } catch {
+    return { user: null, screen: "lore", phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false }, missionProgress: { missionIdx: 0 } };
+  }
+}
+
 function App() {
-  const [screen, setScreen] = useState("lore");
-  const [user, setUser] = useState(null);
+  const initialSession = loadSavedSession();
+  const [screen, setScreen] = useState(initialSession.screen);
+  const [user, setUser] = useState(initialSession.user);
   const [wsConnected, setWsConnected] = useState(false);
   const [useLocalStorage, setUseLocalStorage] = useState(false);
-  const [phaseOneTutorialProgress, setPhaseOneTutorialProgress] = useState({ datasets: false, graficos: false, confirmed: false });
+  const [phaseOneTutorialProgress, setPhaseOneTutorialProgress] = useState(initialSession.phaseOneTutorialProgress);
+  const [missionProgress, setMissionProgress] = useState(initialSession.missionProgress || { missionIdx: 0 });
   const wsRef = useRef(null);
+  const hasLoadedSessionRef = useRef(false);
+
+  useEffect(() => {
+    if (hasLoadedSessionRef.current) return;
+    hasLoadedSessionRef.current = true;
+    if (initialSession.user?.role === "participant") {
+      setScreen(initialSession.screen || "mapa");
+      setUser(initialSession.user);
+      setPhaseOneTutorialProgress(initialSession.phaseOneTutorialProgress || { datasets: false, graficos: false, confirmed: false });
+      setMissionProgress(initialSession.missionProgress || { missionIdx: 0 });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== "participant") return;
+    localStorage.setItem("dq_session_v1", JSON.stringify({
+      user,
+      screen,
+      phaseOneTutorialProgress,
+      missionProgress,
+    }));
+  }, [user, screen, phaseOneTutorialProgress, missionProgress]);
+
+  useEffect(() => {
+    if (!user) {
+      localStorage.removeItem("dq_session_v1");
+    }
+  }, [user]);
+
+  const syncTeamState = (updatedTeam) => {
+    setUser(prev => ({ ...prev, team: updatedTeam }));
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "phase_complete",
+        teamId: updatedTeam.id,
+        newPhase: updatedTeam.phase
+      }));
+      return;
+    }
+
+    if (useLocalStorage) {
+      const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
+      const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
+      localStorage.setItem("dq_teams", JSON.stringify(updated));
+    }
+  };
+
+  const advanceParticipantPhase = (xpEarned) => {
+    if (user?.role !== "participant") return;
+    const updatedTeam = { ...user.team, phase: Math.min(5, user.team.phase + 1), xp: (user.team.xp || 0) + (xpEarned || 0) };
+    syncTeamState(updatedTeam);
+    setMissionProgress({ missionIdx: 0 });
+    setScreen("mapa");
+  };
 
   // WebSocket Connection (with localStorage fallback)
   useEffect(() => {
@@ -84,11 +158,18 @@ function App() {
     const newTeam = { ...teamData, xp: 0, rank: 2, phase: 1, badges: [], id: Date.now() };
     setUser({ role: "participant", team: newTeam });
     setPhaseOneTutorialProgress({ datasets: false, graficos: false, confirmed: false });
+    setMissionProgress({ missionIdx: 0 });
     
     // Guardar en localStorage como backup
     const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
     teams.push(newTeam);
     localStorage.setItem("dq_teams", JSON.stringify(teams));
+    localStorage.setItem("dq_session_v1", JSON.stringify({
+      user: { role: "participant", team: newTeam },
+      screen: "mapa",
+      phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false },
+      missionProgress: { missionIdx: 0 },
+    }));
     
     setScreen("mapa");
   };
@@ -108,42 +189,24 @@ function App() {
         return;
       }
 
-      const updatedTeam = { ...user.team, phase: Math.min(5, user.team.phase + 1), xp: (user.team.xp || 0) + 100 };
-      setUser(prev => ({ ...prev, team: updatedTeam }));
-      
-      // Try WebSocket first
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          type: "phase_complete",
-          teamId: user.team.id,
-          newPhase: updatedTeam.phase
-        }));
-        console.log("✓ Phase complete enviado via WebSocket");
-      } else if (useLocalStorage) {
-        // Fallback a localStorage
-        const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
-        const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
-        localStorage.setItem("dq_teams", JSON.stringify(updated));
-        console.log("✓ Phase complete guardado en localStorage");
-      }
+      advanceParticipantPhase(100);
     }
   };
 
   const handleQuizComplete = (xpEarned) => {
-    if (user?.role === "participant") {
-      const updatedTeam = { ...user.team, phase: Math.min(5, user.team.phase + 1), xp: (user.team.xp || 0) + (xpEarned || 0) };
-      setUser(prev => ({ ...prev, team: updatedTeam }));
+    advanceParticipantPhase(xpEarned);
+  };
 
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "phase_complete", teamId: user.team.id, newPhase: updatedTeam.phase }));
-      } else if (useLocalStorage) {
-        const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
-        const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
-        localStorage.setItem("dq_teams", JSON.stringify(updated));
-      }
+  const handleMissionComplete = (xpEarned) => {
+    advanceParticipantPhase(xpEarned);
+  };
 
-      setScreen("mapa");
-    }
+  const handleLessonComplete = (xpEarned) => {
+    advanceParticipantPhase(xpEarned);
+  };
+
+  const handlePitchComplete = (xpEarned) => {
+    advanceParticipantPhase(xpEarned);
   };
 
   if (!user) {
@@ -158,21 +221,28 @@ function App() {
     
     const renderParticipantScreen = () => {
       switch (screen) {
+        case "lesson":
+          return <LessonScreen onComplete={(xp) => handleLessonComplete(xp)} teamXp={team.xp} />;
         case "datasets":
           return (
             <DatasetsScreen
               tutorialMode={team.phase === 1}
               onVisit={() => setPhaseOneTutorialProgress(prev => ({ ...prev, datasets: true }))}
               onBackToMap={() => setScreen("mapa")}
+              phaseThreeActive={team.phase === 3}
+              onBackToMission={() => setScreen("analysis")}
             />
           );
         case "graficos":
+        case "charts":
           return (
             <ChartEditorScreen
               freeMode={false}
               tutorialMode={team.phase === 1}
               onVisit={() => setPhaseOneTutorialProgress(prev => ({ ...prev, graficos: true }))}
               onBackToMap={() => setScreen("mapa")}
+              phaseThreeActive={team.phase === 3}
+              onBackToMission={() => setScreen("analysis")}
               onComplete={() => {}}
             />
           );
@@ -180,6 +250,22 @@ function App() {
           return (
             <QuizScreen onComplete={(xp) => handleQuizComplete(xp)} />
           );
+        case "analysis":
+          return (
+            <MissionScreen
+              team={team}
+              initialMissionIdx={missionProgress.missionIdx || 0}
+              onMissionProgress={(nextMissionProgress) => setMissionProgress(nextMissionProgress)}
+              onComplete={(xp) => handleMissionComplete(xp)}
+              onNav={setScreen}
+            />
+          );
+        case "pitch":
+          return (
+            <PitchBuilderScreen team={team} onComplete={(xp) => handlePitchComplete(xp)} />
+          );
+        case "leaderboard":
+          return <LeaderboardScreen />;
         case "mapa":
         default:
           return (

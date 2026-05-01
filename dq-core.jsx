@@ -37,7 +37,7 @@ const COLUMNS = [
 const PHASES = [
   { id:1, name:"Conoce tus datos",      icon:"🔍", duration:"30 min", color:"#9D6EF8", xpReward:200, desc:"¿Qué es un dataset? Filas, columnas y tipos de datos." },
   { id:2, name:"Fase teórica",          icon:"❓", duration:"35 min", color:"#22D3EE", xpReward:350, desc:"Lee un concepto antes de responder y elige la situación correcta." },
-  { id:3, name:"Tu análisis",           icon:"🧪", duration:"40 min", color:"#4ADE80", xpReward:400, desc:"Explora libremente con tus propias preguntas." },
+  { id:3, name:"Misiones libres",       icon:"🕵️", duration:"40 min", color:"#4ADE80", xpReward:400, desc:"Resuelve enigmas de negocio manipulando datos y gráficos." },
   { id:4, name:"Pitch Builder",         icon:"🎤", duration:"30 min", color:"#F59E0B", xpReward:300, desc:"Construye tu presentación con tus hallazgos." },
   { id:5, name:"Pitch en vivo",         icon:"🚀", duration:"Live",   color:"#F87171", xpReward:500, desc:"¡Presenta ante todos y vota por el mejor equipo!" },
 ];
@@ -208,6 +208,121 @@ const LESSON_SLIDES = [
     content:"Analizando datos podemos responder preguntas: ¿Los canales de Gaming tienen más suscriptores? ¿Los videos cortos generan más likes? ¡Eso es exactamente lo que van a descubrir hoy!",
     visual:"question",
     tip:"🚀 Los datos sin análisis son solo números. Con análisis, se convierten en historias.",
+  },
+];
+
+const MISSION_CHALLENGES = [
+  {
+    id: 1,
+    title: "Misión 1 · El Dominio Global",
+    problem: "Tawsito quiere saber qué idioma o cultura está ganando más terreno en el Top 15.",
+    question: "¿Cuál es el país que aparece con más frecuencia en la lista actual?",
+    tools: ["datasets", "graficos"],
+    answerType: "text",
+    accepted: ["usa", "estados unidos", "eeuu", "us"],
+    feedback: "Usa filtros o un gráfico de barras/pie para contar la moda por país.",
+    xp: 40,
+  },
+  {
+    id: 2,
+    title: "Misión 2 · La Brecha de la Fama",
+    problem: "Tawsito nota que la distancia entre el canal más grande y el más pequeño de la lista es enorme.",
+    question: "¿Cuál es la diferencia real en millones de suscriptores entre el líder de la tabla y el último lugar visible?",
+    tools: ["datasets"],
+    answerType: "number",
+    answer: 247,
+    tolerance: 1,
+    feedback: "Identifica los valores extremos y calcula el rango entre ambos.",
+    xp: 45,
+  },
+  {
+    id: 3,
+    title: "Misión 3 · El Intruso del Algoritmo",
+    problem: "Hay un canal que parece haber hackeado el sistema: tiene poquísimos videos pero una cantidad de vistas absurda.",
+    question: "Encuentra al canal que tiene la mejor relación 'esfuerzo vs. resultado' (pocos videos pero muchísimas vistas).",
+    tools: ["datasets", "graficos"],
+    answerType: "text",
+    accepted: ["cocomelon"],
+    feedback: "Compáralo en un gráfico de dispersión o revisa la relación entre vistas y número de videos.",
+    xp: 45,
+  },
+  {
+    id: 4,
+    title: "Misión 4 · Calidad sobre Cantidad",
+    problem: "Tawsito dice que los suscriptores son solo un número; lo que importa es cuánto le gusta a la gente el contenido.",
+    question: "Identifica al TawsTuber que tiene la comunidad más fiel y positiva de toda la plataforma.",
+    tools: ["datasets"],
+    answerType: "text",
+    accepted: ["kurzgesagt"],
+    feedback: "Ordena o grafica por Likes % para encontrar el porcentaje más alto.",
+    xp: 40,
+  },
+  {
+    id: 5,
+    title: "Misión 5 · El Mito del Trabajo Duro",
+    problem: "Muchos creen que subir videos como loco te hace millonario. Tawsito cree que es mentira.",
+    question: "¿Subir más videos realmente garantiza ganar más dinero? Encuentra pruebas que confirmen o desmientan esto.",
+    tools: ["graficos"],
+    answerType: "text",
+    accepted: ["no", "no hay", "no existe", "correlacion debil", "poca correlacion", "relacion debil"],
+    feedback: "Usa un diagrama de dispersión entre 'Nº de videos' e 'Ingresos' para ver si existe una correlación.",
+    xp: 50,
+  },
+  {
+    id: 6,
+    title: "Misión 6 · El Tesoro Escondido",
+    problem: "Hay una categoría que, aunque no tiene tantos canales, genera muchísimas visitas en promedio.",
+    question: "Si Tawsito tuviera que abrir un nuevo canal hoy, ¿en qué categoría hay más 'hambre' de contenido por parte del público?",
+    tools: ["datasets", "graficos"],
+    answerType: "text",
+    accepted: ["kids"],
+    feedback: "Filtra por categoría y compara los promedios visuales de visitas.",
+    xp: 40,
+  },
+  {
+    id: 7,
+    title: "Misión 7 · La Mentira del Promedio",
+    problem: "Si sumamos a MrBeast con canales pequeños, el promedio de ingresos parece muy alto, pero ¿es real para todos?",
+    question: "Si eliminamos a los 2 YouTubers más ricos, ¿qué pasa con el resto? ¿Cuál sería el nuevo ingreso 'normal' de la lista?",
+    tools: ["datasets"],
+    answerType: "number",
+    answer: 0.9,
+    tolerance: 0.2,
+    feedback: "Aprende sobre el sesgo eliminando valores extremos del dataset.",
+    xp: 50,
+  },
+  {
+    id: 8,
+    title: "Misión 8 · El Gigante Dormido",
+    problem: "Hay canales con millones de suscriptores que parece que la gente ya olvidó.",
+    question: "Encuentra un canal que tenga muchísimos suscriptores pero que esté en los últimos lugares de ingresos mensuales.",
+    tools: ["datasets"],
+    answerType: "text",
+    accepted: ["set india"],
+    feedback: "Compara dos métricas opuestas para encontrar inconsistencias.",
+    xp: 45,
+  },
+  {
+    id: 9,
+    title: "Misión 9 · La Apuesta por el País",
+    problem: "Un patrocinador solo quiere invertir en TawsTubers de un país específico donde la audiencia sea muy activa dando likes.",
+    question: "¿En qué país los creadores tienen, en promedio, el mejor porcentaje de aprobación?",
+    tools: ["datasets"],
+    answerType: "text",
+    accepted: ["germany", "alemania"],
+    feedback: "Agrupa datos por país y analiza la columna de Likes %.",
+    xp: 40,
+  },
+  {
+    id: 10,
+    title: "Misión 10 · El Mapa de la Riqueza",
+    problem: "Tawsito quiere saber si el dinero en YouTube está concentrado en un solo lugar o repartido por el mundo.",
+    question: "¿Qué país domina el 50% de los ingresos totales de la lista?",
+    tools: ["graficos"],
+    answerType: "text",
+    accepted: ["usa", "estados unidos", "eeuu", "us"],
+    feedback: "Usa el gráfico circular con la métrica de Ingresos y la dimensión de País.",
+    xp: 55,
   },
 ];
 
@@ -514,7 +629,7 @@ function Sidebar({ screen, onNav }) {
 }
 
 function TopBar({ team, screen, onLogout }) {
-  const labels = { datasets:"DATASETS", mapa:"MAPA DE PROGRESO", graficos:"GRAFICOS" };
+  const labels = { datasets:"DATASETS", mapa:"MAPA DE PROGRESO", graficos:"GRAFICOS", analysis:"MISIÓN 3", pitch:"PITCH BUILDER", leaderboard:"LEADERBOARD", lesson:"LECCIÓN" };
   const moduleLabel = labels[screen] || "MAPA";
   return (
     <div style={{ height:54, background:C.surface, borderBottom:`1px solid ${C.border}`,
@@ -538,7 +653,7 @@ function TopBar({ team, screen, onLogout }) {
 
 // Export everything
 Object.assign(window, {
-  YT_DATA, COLUMNS, PHASES, LEADERBOARD_DATA, QUIZ_QUESTIONS, LESSON_SLIDES, C,
+  YT_DATA, COLUMNS, PHASES, LEADERBOARD_DATA, QUIZ_QUESTIONS, LESSON_SLIDES, MISSION_CHALLENGES, C,
   Btn, Card, Chip, XPPop, XPBar, Timer,
   BarChart, ScatterChart, PieChart, LineChart,
   Sidebar, TopBar,

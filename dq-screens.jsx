@@ -48,10 +48,6 @@ function LoreScreen({ onStart }) {
     </div>
   );
 }
-
-// ═══════════════════════════════════════════
-// LOGIN SCREEN
-// ═══════════════════════════════════════════
 const AVATARS = ["🚀","🕵️","💻","🥷","🏴‍☠️","👑","🦊","🐉","⚡","🎯","🌟","🔥","🦋","🎮","🤖","🦄"];
 
 function LoginScreen({ onParticipantLogin, onAdminLogin }) {
@@ -524,6 +520,7 @@ function QuizScreen({ onComplete }) {
   const [done, setDone] = useState(false);
   const [timerKey, setTimerKey] = useState(0);
   const [showXP, setShowXP] = useState(null);
+  const [autoAdvancePending, setAutoAdvancePending] = useState(false);
 
   const q = QUIZ_QUESTIONS[qIdx];
 
@@ -536,6 +533,13 @@ function QuizScreen({ onComplete }) {
     if (xpEarned) setShowXP(xpEarned);
     setTotalXP(p => p + xpEarned);
     setStreak(p => correct ? p+1 : 0);
+    if (!correct) {
+      setAutoAdvancePending(true);
+      setTimeout(() => {
+        setAutoAdvancePending(false);
+        next();
+      }, 900);
+    }
   };
 
   const next = () => {
@@ -667,9 +671,186 @@ function QuizScreen({ onComplete }) {
 }
 
 // ═══════════════════════════════════════════
+// MISSION SCREEN — PHASE 3
+// ═══════════════════════════════════════════
+function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, onMissionProgress }) {
+  const [missionIdx, setMissionIdx] = useState(initialMissionIdx);
+  const [showQuestion, setShowQuestion] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [earnedXP, setEarnedXP] = useState(0);
+  const [finished, setFinished] = useState(false);
+
+  const mission = MISSION_CHALLENGES[missionIdx];
+
+  useEffect(() => {
+    setShowQuestion(false);
+    setAnswer("");
+    setFeedback(null);
+  }, [missionIdx]);
+
+  useEffect(() => {
+    setMissionIdx(initialMissionIdx || 0);
+  }, [initialMissionIdx]);
+
+  useEffect(() => {
+    onMissionProgress && onMissionProgress({ missionIdx });
+  }, [missionIdx]);
+
+  const normalize = (value) => String(value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9.]+/g, " ").trim();
+
+  const isCorrect = () => {
+    const value = normalize(answer);
+    if (!value) return false;
+    if (mission.answerType === "number") {
+      const numeric = Number(String(value).replace(/[^0-9.\-]/g, ""));
+      return Number.isFinite(numeric) && Math.abs(numeric - mission.answer) <= (mission.tolerance || 0.5);
+    }
+    return (mission.accepted || []).some(expected => value.includes(normalize(expected)) || normalize(expected).includes(value));
+  };
+
+  const handleSubmit = () => {
+    if (!showQuestion || feedback) return;
+    if (!answer.trim()) {
+      setFeedback({ ok: false, text: "Escribe una respuesta antes de validar." });
+      return;
+    }
+
+    const correct = isCorrect();
+    if (correct && !feedback?.ok) {
+      setEarnedXP(prev => prev + mission.xp);
+    }
+
+    setFeedback({
+      ok: correct,
+      text: correct ? `Correcto. +${mission.xp} XP` : `Aún no. ${mission.feedback}`,
+      solution: correct ? null : (mission.answerType === "number" ? `${mission.answer}` : (mission.accepted || [])[0]),
+    });
+  };
+
+  const nextMission = () => {
+    if (missionIdx >= MISSION_CHALLENGES.length - 1) {
+      setFinished(true);
+      return;
+    }
+    setMissionIdx(i => i + 1);
+    setShowQuestion(false);
+    setFeedback(null);
+    setAnswer("");
+  };
+
+  if (finished) {
+    return (
+      <div style={{ padding:28, flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <Card style={{ padding:36, maxWidth:560, width:"100%", textAlign:"center" }} glow={C.green}>
+          <div style={{ fontSize:56, marginBottom:14 }}>🕵️</div>
+          <h2 style={{ fontSize:28, fontWeight:900, marginBottom:10 }}>Misiones completadas</h2>
+          <p style={{ color:C.muted, marginBottom:18, lineHeight:1.6 }}>
+            Resolvieron el bloque de investigación libre y encontraron pistas con datos reales.
+          </p>
+          <div style={{ background:`${C.yellow}14`, border:`1px solid ${C.yellow}30`, borderRadius:14, padding:18, marginBottom:22 }}>
+            <div style={{ fontSize:36, fontWeight:900, color:C.yellow, fontFamily:"Space Mono" }}>+{earnedXP} XP</div>
+            <div style={{ color:C.muted, fontSize:13 }}>Ganados en la fase 3</div>
+          </div>
+          <Btn onClick={() => onComplete && onComplete(earnedXP)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
+            Completar fase 3 →
+          </Btn>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+        <div>
+          <Chip label={`Misión ${missionIdx + 1} de ${MISSION_CHALLENGES.length}`} color={C.green} />
+          <h1 style={{ fontSize:24, fontWeight:900, marginTop:8 }}>🕵️ Fase 3: Misiones libres</h1>
+          <p style={{ color:C.muted, fontSize:14, marginTop:6 }}>Primero el problema, luego la pregunta, y después a trastear la herramienta para encontrar la respuesta.</p>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+          <div style={{ background:`${C.yellow}15`, border:`1px solid ${C.yellow}25`, borderRadius:20, padding:"4px 14px" }}>
+            <span style={{ color:C.yellow, fontWeight:800, fontFamily:"Space Mono" }}>⚡ {earnedXP} XP</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:2 }}>
+        <div style={{ width:`${(missionIdx / MISSION_CHALLENGES.length) * 100}%`, height:"100%", background:`linear-gradient(90deg,${C.green},${C.cyan})`, borderRadius:2, transition:"width 0.4s" }} />
+      </div>
+
+      <Card className="fade-in" style={{ padding:28 }} glow={C.green}>
+        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Problema de negocio</div>
+        <div style={{ display:"grid", gap:14 }}>
+          <div style={{ padding:16, borderRadius:14, background:`${C.green}10`, border:`1px solid ${C.green}30` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+              <span style={{ fontSize:20 }}>🧩</span>
+              <h2 style={{ fontSize:20, fontWeight:800, lineHeight:1.3 }}>{mission.title}</h2>
+            </div>
+            <div style={{ color:C.muted, fontSize:14, lineHeight:1.6 }}>{mission.problem}</div>
+          </div>
+
+          {!showQuestion ? (
+            <div style={{ display:"flex", justifyContent:"space-between", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+              <div style={{ color:C.muted, fontSize:13 }}>Cuando estés listo, pasa a la pregunta y luego vuelve a buscar la respuesta en DATASETS o GRAFICOS.</div>
+              <Btn onClick={() => setShowQuestion(true)} variant="success">Ver pregunta →</Btn>
+            </div>
+          ) : (
+            <div style={{ padding:16, borderRadius:14, background:"rgba(255,255,255,0.03)", border:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>Reto</div>
+              <h2 style={{ fontSize:22, fontWeight:800, lineHeight:1.4, marginBottom:14 }}>{mission.question}</h2>
+
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:14 }}>
+                {(mission.tools || []).map(tool => (
+                  <Btn key={tool} variant="secondary" size="sm" onClick={() => onNav && onNav(tool)}>
+                    Abrir {tool === "datasets" ? "DATASETS" : "GRAFICOS"}
+                  </Btn>
+                ))}
+              </div>
+
+              <input
+                value={answer}
+                onChange={e => setAnswer(e.target.value)}
+                placeholder="Escribe el nombre del canal o el valor que encontraste para resolver el misterio"
+                style={{ marginBottom:12, fontSize:16, padding:"12px 16px" }}
+              />
+
+              {feedback && (
+                <div style={{ marginBottom:12, padding:12, borderRadius:10, background:feedback.ok ? `${C.green}12` : `${C.yellow}10`, border:`1px solid ${feedback.ok ? C.green : C.yellow}30` }}>
+                  <div style={{ fontWeight:800, color:feedback.ok ? C.green : C.yellow, marginBottom:4 }}>{feedback.ok ? "Respuesta validada" : "Pista"}</div>
+                  <div style={{ color:C.muted, fontSize:13, lineHeight:1.5 }}>{feedback.text}</div>
+                  {!feedback.ok && feedback.solution && (
+                    <div style={{ color:C.text, fontSize:12, marginTop:8 }}>Referencia esperada: {feedback.solution}</div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display:"flex", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
+                <Btn
+                  variant="secondary"
+                  size="sm"
+                  disabled={!!feedback}
+                  onClick={() => { setShowQuestion(false); setFeedback(null); }}
+                >
+                  Volver al problema
+                </Btn>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                  <Btn variant="primary" size="sm" onClick={handleSubmit} disabled={!!feedback}>Validar respuesta</Btn>
+                  {feedback && <Btn variant="success" size="sm" onClick={nextMission}>{missionIdx === MISSION_CHALLENGES.length - 1 ? "Finalizar fase 3" : "Siguiente misión"}</Btn>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
 // CHART EDITOR SCREEN (KEY SCREEN)
 // ═══════════════════════════════════════════
-function ChartEditorScreen({ onComplete, onVisit, onBackToMap, freeMode=false, tutorialMode=false }) {
+function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false }) {
   const [chartType, setChartType] = useState("bar");
   const [xAxis, setXAxis] = useState(null);
   const [yAxis, setYAxis] = useState(null);
@@ -734,6 +915,9 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, freeMode=false, t
           </div>
           {tutorialMode && onBackToMap && (
             <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>
+          )}
+          {phaseThreeActive && onBackToMission && (
+            <Btn variant="success" size="sm" onClick={onBackToMission}>🕵️ Volver a misiones</Btn>
           )}
         </div>
       </div>
@@ -1368,6 +1552,10 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                     <Btn variant="primary" onClick={() => onNav("quiz")}>
                       ❓ Fase Teórica (Quiz)
                     </Btn>
+                  ) : phase.id === 3 ? (
+                    <Btn variant="primary" onClick={() => onNav("analysis")}> 
+                      🕵️ Misiones libres
+                    </Btn>
                   ) : (
                     <Btn variant="primary" onClick={() => onNav("graficos")}>
                       📈 GRAFICOS
@@ -1387,9 +1575,19 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                   <Btn variant="secondary" onClick={() => onNav("datasets")}>
                     📊 Revisar DATASETS
                   </Btn>
-                  <Btn variant="secondary" onClick={() => onNav("graficos")}>
-                    📈 Revisar GRAFICOS
-                  </Btn>
+                  {phase.id === 2 ? (
+                    <Btn variant="secondary" onClick={() => onNav("quiz")}>
+                      ❓ Revisar Quiz
+                    </Btn>
+                  ) : phase.id === 3 ? (
+                    <Btn variant="secondary" onClick={() => onNav("analysis")}>
+                      🕵️ Revisar Misiones
+                    </Btn>
+                  ) : (
+                    <Btn variant="secondary" onClick={() => onNav("graficos")}>
+                      📈 Revisar GRAFICOS
+                    </Btn>
+                  )}
                 </div>
               )}
             </Card>
@@ -1411,12 +1609,13 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
   );
 }
 
-function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
+function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, tutorialMode=false }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [country, setCountry] = useState("all");
   const [sortKey, setSortKey] = useState("views");
   const [sortDir, setSortDir] = useState("desc");
+  const [hiddenRows, setHiddenRows] = useState([]);
 
   useEffect(() => { onVisit && onVisit(); }, []);
 
@@ -1440,6 +1639,17 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
     return sortDir === "asc" ? cmp : -cmp;
   });
 
+  const visibleRows = sorted.filter(d => !hiddenRows.includes(d.id));
+  const hiddenItems = YT_DATA.filter(d => hiddenRows.includes(d.id));
+
+  const toggleRow = (id) => {
+    setHiddenRows(prev => prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]);
+  };
+
+  const showOnly = (id) => setHiddenRows(YT_DATA.filter(d => d.id !== id).map(d => d.id));
+
+  const resetHidden = () => setHiddenRows([]);
+
   const headers = [
     { key:"channel", label:"Canal" },
     { key:"category", label:"Categoría" },
@@ -1450,6 +1660,7 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
     { key:"avgViews", label:"Avg/video (M)" },
     { key:"likes", label:"Likes %" },
     { key:"revenue", label:"Ingresos (M$)" },
+    { key:"actions", label:"Acciones" },
   ];
 
   const toggleSort = (k) => {
@@ -1467,6 +1678,7 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
         <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
           <Chip label={`${sorted.length} filas visibles`} color={C.cyan} />
           {tutorialMode && onBackToMap && <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>}
+          {phaseThreeActive && onBackToMission && <Btn variant="success" size="sm" onClick={onBackToMission}>🕵️ Volver a misiones</Btn>}
         </div>
       </div>
 
@@ -1486,7 +1698,7 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
       )}
 
       <Card style={{ padding:14 }}>
-        <div style={{ display:"grid", gridTemplateColumns:"1.3fr 1fr 1fr auto", gap:10 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1.3fr 1fr 1fr auto auto", gap:10 }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por canal, categoría o país" />
           <select value={category} onChange={e=>setCategory(e.target.value)}>
             {categories.map(c => <option key={c} value={c}>{c === "all" ? "Todas las categorías" : c}</option>)}
@@ -1497,11 +1709,17 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
           <Btn variant="secondary" onClick={() => { setSearch(""); setCategory("all"); setCountry("all"); setSortKey("views"); setSortDir("desc"); }}>
             Reset
           </Btn>
+          <Btn variant="ghost" onClick={resetHidden}>Mostrar todo</Btn>
         </div>
       </Card>
 
-      <Card style={{ overflowX:"auto" }}>
-        <table style={{ width:"100%", borderCollapse:"collapse", minWidth:980 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 280px", gap:14, alignItems:"start" }}>
+        <Card style={{ overflowX:"auto" }}>
+          <div style={{ padding:"12px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:`1px solid ${C.border}` }}>
+            <div style={{ fontSize:12, color:C.muted }}>Mostrando {visibleRows.length} de {sorted.length} filas filtradas</div>
+            <div style={{ fontSize:12, color:C.muted }}>Ocultas: {hiddenRows.length}</div>
+          </div>
+          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:980 }}>
           <thead>
             <tr style={{ background:`${C.purple}12` }}>
               {headers.map(h => {
@@ -1516,7 +1734,7 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((d, i) => (
+            {visibleRows.map((d, i) => (
               <tr key={d.id} style={{ borderBottom:`1px solid ${C.border2}`, background:i % 2 ? "transparent" : "rgba(255,255,255,0.02)" }}>
                 <td style={{ padding:"9px 12px", fontWeight:700 }}>{d.channel}</td>
                 <td style={{ padding:"9px 12px" }}><Chip label={d.category} color={C.cyan} size="sm" /></td>
@@ -1527,11 +1745,42 @@ function DatasetsScreen({ onVisit, onBackToMap, tutorialMode=false }) {
                 <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.avgViews}</td>
                 <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>{d.likes}%</td>
                 <td style={{ padding:"9px 12px", fontFamily:"Space Mono" }}>${d.revenue}</td>
+                <td style={{ padding:"9px 12px", textAlign:"right" }}>
+                  <Btn variant="ghost" size="sm" onClick={() => toggleRow(d.id)}>{hiddenRows.includes(d.id) ? "Mostrar" : "Ocultar"}</Btn>
+                </td>
               </tr>
             ))}
+            {!visibleRows.length && (
+              <tr>
+                <td colSpan={10} style={{ padding:"20px", textAlign:"center", color:C.muted }}>No hay filas visibles con estos filtros.</td>
+              </tr>
+            )}
           </tbody>
-        </table>
-      </Card>
+          </table>
+        </Card>
+
+        <Card style={{ padding:14, position:"sticky", top:14 }}>
+          <div style={{ fontSize:12, fontWeight:800, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>Ocultar / mostrar filas</div>
+          <div style={{ fontSize:12, color:C.muted, marginBottom:12 }}>Usa esta lista para esconder registros individuales y comparar sin ruido.</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:540, overflowY:"auto" }}>
+            {YT_DATA.map(d => {
+              const isHidden = hiddenRows.includes(d.id);
+              return (
+                <div key={d.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:10, background:isHidden ? `${C.red}10` : `${C.green}08`, border:`1px solid ${isHidden ? C.red : C.green}20` }}>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.channel}</div>
+                    <div style={{ fontSize:11, color:C.muted }}>{d.category} · {d.country}</div>
+                  </div>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <Btn variant={isHidden ? "success" : "secondary"} size="sm" onClick={() => toggleRow(d.id)}>{isHidden ? "Mostrar" : "Ocultar"}</Btn>
+                    <Btn variant="ghost" size="sm" onClick={() => showOnly(d.id)}>Solo este</Btn>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
