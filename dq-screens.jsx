@@ -673,29 +673,32 @@ function QuizScreen({ onComplete }) {
 // ═══════════════════════════════════════════
 // MISSION SCREEN — PHASE 3
 // ═══════════════════════════════════════════
-function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, onMissionProgress }) {
-  const [missionIdx, setMissionIdx] = useState(initialMissionIdx);
-  const [showQuestion, setShowQuestion] = useState(false);
-  const [answer, setAnswer] = useState("");
-  const [feedback, setFeedback] = useState(null);
-  const [earnedXP, setEarnedXP] = useState(0);
-  const [finished, setFinished] = useState(false);
+function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialProgress=null, onMissionProgress, onProgress }) {
+  const [missionIdx, setMissionIdx] = useState(initialProgress?.missionIdx ?? initialMissionIdx);
+  const [showQuestion, setShowQuestion] = useState(initialProgress?.showQuestion ?? false);
+  const [answer, setAnswer] = useState(initialProgress?.answer ?? "");
+  const [feedback, setFeedback] = useState(initialProgress?.feedback ?? null);
+  const [earnedXP, setEarnedXP] = useState(initialProgress?.earnedXP ?? 0);
+  const [finished, setFinished] = useState(initialProgress?.finished ?? false);
 
   const mission = MISSION_CHALLENGES[missionIdx];
 
   useEffect(() => {
-    setShowQuestion(false);
-    setAnswer("");
-    setFeedback(null);
-  }, [missionIdx]);
-
-  useEffect(() => {
-    setMissionIdx(initialMissionIdx || 0);
-  }, [initialMissionIdx]);
+    setMissionIdx(initialProgress?.missionIdx ?? (initialMissionIdx || 0));
+    setShowQuestion(initialProgress?.showQuestion ?? false);
+    setAnswer(initialProgress?.answer ?? "");
+    setFeedback(initialProgress?.feedback ?? null);
+    setEarnedXP(initialProgress?.earnedXP ?? 0);
+    setFinished(initialProgress?.finished ?? false);
+  }, [initialMissionIdx, initialProgress]);
 
   useEffect(() => {
     onMissionProgress && onMissionProgress({ missionIdx });
   }, [missionIdx]);
+
+  useEffect(() => {
+    onProgress && onProgress({ missionIdx, showQuestion, answer, feedback, earnedXP, finished });
+  }, [missionIdx, showQuestion, answer, feedback, earnedXP, finished]);
 
   const normalize = (value) => String(value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9.]+/g, " ").trim();
 
@@ -850,13 +853,20 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, onMission
 // ═══════════════════════════════════════════
 // CHART EDITOR SCREEN (KEY SCREEN)
 // ═══════════════════════════════════════════
-function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false }) {
-  const [chartType, setChartType] = useState("bar");
-  const [xAxis, setXAxis] = useState(null);
-  const [yAxis, setYAxis] = useState(null);
-  const [catFilter, setCatFilter] = useState("all");
+function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false, initialProgress=null, onProgress }) {
+  const [chartType, setChartType] = useState(initialProgress?.chartType || "bar");
+  const [xAxis, setXAxis] = useState(initialProgress?.xAxis ?? null);
+  const [yAxis, setYAxis] = useState(initialProgress?.yAxis ?? null);
+  const [catFilter, setCatFilter] = useState(initialProgress?.catFilter || "all");
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+
+  useEffect(() => {
+    setChartType(initialProgress?.chartType || "bar");
+    setXAxis(initialProgress?.xAxis ?? null);
+    setYAxis(initialProgress?.yAxis ?? null);
+    setCatFilter(initialProgress?.catFilter || "all");
+  }, [initialProgress]);
 
   const cats = ["all","Entertainment","Gaming","Music","Kids","Cooking","Tech","Sports","DIY","Education"];
   const allCols = COLUMNS;
@@ -868,6 +878,10 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
   useEffect(() => {
     onVisit && onVisit();
   }, []);
+
+  useEffect(() => {
+    onProgress && onProgress({ chartType, xAxis, yAxis, catFilter });
+  }, [chartType, xAxis, yAxis, catFilter]);
 
   const filteredData = catFilter==="all" ? YT_DATA : YT_DATA.filter(d=>d.category===catFilter);
 
@@ -1609,15 +1623,28 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
   );
 }
 
-function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, tutorialMode=false }) {
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
-  const [country, setCountry] = useState("all");
-  const [sortKey, setSortKey] = useState("views");
-  const [sortDir, setSortDir] = useState("desc");
-  const [hiddenRows, setHiddenRows] = useState([]);
+function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, tutorialMode=false, initialProgress=null, onProgress }) {
+  const [search, setSearch] = useState(initialProgress?.search || "");
+  const [category, setCategory] = useState(initialProgress?.category || "all");
+  const [country, setCountry] = useState(initialProgress?.country || "all");
+  const [sortKey, setSortKey] = useState(initialProgress?.sortKey || "views");
+  const [sortDir, setSortDir] = useState(initialProgress?.sortDir || "desc");
+  const [hiddenRows, setHiddenRows] = useState(initialProgress?.hiddenRows || []);
 
   useEffect(() => { onVisit && onVisit(); }, []);
+
+  useEffect(() => {
+    setSearch(initialProgress?.search || "");
+    setCategory(initialProgress?.category || "all");
+    setCountry(initialProgress?.country || "all");
+    setSortKey(initialProgress?.sortKey || "views");
+    setSortDir(initialProgress?.sortDir || "desc");
+    setHiddenRows(initialProgress?.hiddenRows || []);
+  }, [initialProgress]);
+
+  useEffect(() => {
+    onProgress && onProgress({ search, category, country, sortKey, sortDir, hiddenRows });
+  }, [search, category, country, sortKey, sortDir, hiddenRows]);
 
   const categories = ["all", ...new Set(YT_DATA.map(d => d.category))];
   const countries = ["all", ...new Set(YT_DATA.map(d => d.country))];
