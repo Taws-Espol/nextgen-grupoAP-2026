@@ -1470,56 +1470,7 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
         </div>
       </Card>
 
-      {team.phase === 1 && (
-        <Card key={tutorialStep} style={{ padding:18, border:`1px solid ${tutorialState.color}40`, background:`${tutorialState.color}10`, animation:"fadeIn 0.25s ease" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:14, flexWrap:"wrap" }}>
-            <div>
-              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
-                <span style={{ fontSize:20 }}>{tutorialState.icon}</span>
-                <div style={{ fontSize:16, fontWeight:800 }}>{tutorialState.title}</div>
-              </div>
-              <div style={{ color:C.muted, fontSize:13 }}>{tutorialState.copy}</div>
-            </div>
-            <Chip label={phaseOneTutorialReady ? "Listo para completar" : `Paso ${tutorialStep}/3`} color={phaseOneTutorialReady ? C.green : tutorialState.color} />
-          </div>
-
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, marginBottom:14 }}>
-            <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.datasets ? `${C.green}18` : tutorialStep === 1 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.datasets ? C.green : tutorialStep === 1 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 1 && !phaseOneTutorialProgress.datasets ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 1 ? "fadeIn 0.25s ease" : "none" }}>
-              <div style={{ fontWeight:800, marginBottom:6 }}>1. Explora la tabla</div>
-              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Abre DATASETS para revisar columnas, filtros y ordenamiento.</div>
-              <Btn variant={phaseOneTutorialProgress.datasets ? "success" : "primary"} size="sm" onClick={() => onNav("datasets")}>
-                {phaseOneTutorialProgress.datasets ? "Visto" : "Abrir DATASETS"}
-              </Btn>
-            </div>
-            <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.graficos ? `${C.green}18` : tutorialStep === 2 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.graficos ? C.green : tutorialStep === 2 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 2 && !phaseOneTutorialProgress.graficos ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 2 ? "fadeIn 0.25s ease" : "none" }}>
-              <div style={{ fontWeight:800, marginBottom:6 }}>2. Crea un gráfico</div>
-              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Abre GRAFICOS y arrastra una métrica numérica al eje Y.</div>
-              <Btn variant={phaseOneTutorialProgress.graficos ? "success" : "primary"} size="sm" onClick={() => onNav("graficos")}>
-                {phaseOneTutorialProgress.graficos ? "Visto" : "Abrir GRAFICOS"}
-              </Btn>
-            </div>
-            <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.confirmed ? `${C.green}18` : tutorialStep === 3 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.confirmed ? C.green : tutorialStep === 3 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 3 && !phaseOneTutorialProgress.confirmed ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 3 ? "fadeIn 0.25s ease" : "none" }}>
-              <div style={{ fontWeight:800, marginBottom:6 }}>3. Confirma que entendiste</div>
-              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Cuando ya abriste ambos módulos, confirma para desbloquear la fase.</div>
-              <Btn
-                variant={phaseOneTutorialProgress.confirmed ? "success" : "secondary"}
-                size="sm"
-                disabled={!phaseOneTutorialProgress.datasets || !phaseOneTutorialProgress.graficos || phaseOneTutorialProgress.confirmed}
-                onClick={() => onConfirmPhaseOneTutorial && onConfirmPhaseOneTutorial()}
-              >
-                {phaseOneTutorialProgress.confirmed ? "Confirmado" : "Confirmar guía"}
-              </Btn>
-            </div>
-          </div>
-
-          <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.muted }}>
-            <span style={{ color:tutorialState.color, fontSize:14 }}>{tutorialState.icon}</span>
-            <span>
-            Estado: {phaseOneTutorialProgress.datasets ? "DATASETS listo" : "DATASETS pendiente"} · {phaseOneTutorialProgress.graficos ? "GRAFICOS listo" : "GRAFICOS pendiente"} · {phaseOneTutorialProgress.confirmed ? "Guía confirmada" : "Guía pendiente"}
-            </span>
-          </div>
-        </Card>
-      )}
+      
 
       <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
         {PHASES.map((phase, idx) => {
@@ -1556,7 +1507,66 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                 </div>
               </div>
 
-              {isActive && (
+              {isActive && phase.id === 1 ? (
+                <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${phase.color}40` }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:14, flexWrap:"wrap" }}>
+                    <div>
+                      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+                        <span style={{ fontSize:20 }}>{tutorialState.icon}</span>
+                        <div style={{ fontSize:16, fontWeight:800 }}>{tutorialState.title}</div>
+                      </div>
+                      <div style={{ color:C.muted, fontSize:13 }}>{tutorialState.copy}</div>
+                    </div>
+                    <Chip label={phaseOneTutorialReady ? "Listo para completar" : `Paso ${tutorialStep}/3`} color={phaseOneTutorialReady ? C.green : tutorialState.color} />
+                  </div>
+
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, marginBottom:14 }}>
+                    <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.datasets ? `${C.green}18` : tutorialStep === 1 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.datasets ? C.green : tutorialStep === 1 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 1 && !phaseOneTutorialProgress.datasets ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 1 ? "fadeIn 0.25s ease" : "none" }}>
+                      <div style={{ fontWeight:800, marginBottom:6 }}>1. Explora la tabla</div>
+                      <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Abre DATASETS para revisar columnas, filtros y ordenamiento.</div>
+                      <Btn variant={phaseOneTutorialProgress.datasets ? "success" : "primary"} size="sm" onClick={() => onNav("datasets")}>
+                        {phaseOneTutorialProgress.datasets ? "Visto" : "Abrir DATASETS"}
+                      </Btn>
+                    </div>
+                    <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.graficos ? `${C.green}18` : tutorialStep === 2 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.graficos ? C.green : tutorialStep === 2 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 2 && !phaseOneTutorialProgress.graficos ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 2 ? "fadeIn 0.25s ease" : "none" }}>
+                      <div style={{ fontWeight:800, marginBottom:6 }}>2. Crea un gráfico</div>
+                      <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Abre GRAFICOS y arrastra una métrica numérica al eje Y.</div>
+                      <Btn variant={phaseOneTutorialProgress.graficos ? "success" : "primary"} size="sm" onClick={() => onNav("graficos")}>
+                        {phaseOneTutorialProgress.graficos ? "Visto" : "Abrir GRAFICOS"}
+                      </Btn>
+                    </div>
+                    <div style={{ padding:12, borderRadius:10, background:phaseOneTutorialProgress.confirmed ? `${C.green}18` : tutorialStep === 3 ? `${tutorialState.color}16` : "rgba(255,255,255,0.03)", border:`1px solid ${phaseOneTutorialProgress.confirmed ? C.green : tutorialStep === 3 ? tutorialState.color : C.border}`, boxShadow:tutorialStep === 3 && !phaseOneTutorialProgress.confirmed ? `0 0 18px ${tutorialState.color}22` : "none", animation:tutorialStep === 3 ? "fadeIn 0.25s ease" : "none" }}>
+                      <div style={{ fontWeight:800, marginBottom:6 }}>3. Confirma que entendiste</div>
+                      <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>Cuando ya abriste ambos módulos, confirma para desbloquear la fase.</div>
+                      <Btn
+                        variant={phaseOneTutorialProgress.confirmed ? "success" : "secondary"}
+                        size="sm"
+                        disabled={!phaseOneTutorialProgress.datasets || !phaseOneTutorialProgress.graficos || phaseOneTutorialProgress.confirmed}
+                        onClick={() => onConfirmPhaseOneTutorial && onConfirmPhaseOneTutorial()}
+                      >
+                        {phaseOneTutorialProgress.confirmed ? "Confirmado" : "Confirmar guía"}
+                      </Btn>
+                    </div>
+                  </div>
+
+                  <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.muted }}>
+                    <span style={{ color:tutorialState.color, fontSize:14 }}>{tutorialState.icon}</span>
+                    <span>
+                      Estado: {phaseOneTutorialProgress.datasets ? "DATASETS listo" : "DATASETS pendiente"} · {phaseOneTutorialProgress.graficos ? "GRAFICOS listo" : "GRAFICOS pendiente"} · {phaseOneTutorialProgress.confirmed ? "Guía confirmada" : "Guía pendiente"}
+                    </span>
+                  </div>
+
+                  <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                    <Btn
+                      variant="secondary"
+                      disabled={!phaseOneTutorialReady}
+                      onClick={() => onPhaseComplete && onPhaseComplete()}
+                    >
+                      {phaseOneTutorialReady ? "Completar Fase 1 y desbloquear Fase 2 →" : "Completa la guía para habilitar Fase 2"}
+                    </Btn>
+                  </div>
+                </div>
+              ) : isActive ? (
                 <div style={{ display:"flex", gap:10, marginTop:14, paddingTop:14, borderTop:`1px solid ${phase.color}40` }}>
                   <Btn variant="primary" onClick={() => onNav("datasets")}>
                     📊 DATASETS
@@ -1583,7 +1593,7 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                     {phase.id === 1 && !phaseOneTutorialReady ? "Abre DATASETS y GRAFICOS primero" : "Fase completada →"}
                   </Btn>
                 </div>
-              )}
+              ) : null}
               {isCompleted && (
                 <div style={{ display:"flex", gap:10, marginTop:14, paddingTop:14, borderTop:`1px solid ${C.green}40` }}>
                   <Btn variant="secondary" onClick={() => onNav("datasets")}>
