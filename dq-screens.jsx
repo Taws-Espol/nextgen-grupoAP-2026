@@ -510,165 +510,688 @@ function LessonScreen({ onComplete, teamXp }) {
 // ═══════════════════════════════════════════
 // QUIZ SCREEN
 // ═══════════════════════════════════════════
+// NUCLEUS CORE — Drag Drop Target
+// ═══════════════════════════════════════════
+function NucleusCore({ isActive, isCorrect, correctAnswerText }) {
+  const [glowIntensity, setGlowIntensity] = useState(0);
+  const nucleusRef = useRef(null);
+
+  useEffect(() => {
+    if (isCorrect) {
+      let t = 0;
+      const interval = setInterval(() => {
+        t += 0.02;
+        setGlowIntensity(Math.sin(t * 3) * 0.5 + 0.5);
+        if (t > 1) clearInterval(interval);
+      }, 16);
+      return () => clearInterval(interval);
+    }
+  }, [isCorrect]);
+
+  return (
+    <div
+      ref={nucleusRef}
+      style={{
+        position: "relative",
+        width: 158,
+        height: 158,
+        borderRadius: "50%",
+        border: `2px solid ${C.cyan}`,
+        background: `radial-gradient(circle at 30% 30%, ${C.cyan}28, ${C.purple}14 55%, ${C.bg} 100%)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: isActive ? "grab" : "default",
+        transition: "all 0.2s ease",
+        boxShadow: `0 0 ${22 + glowIntensity * 42}px ${C.cyan}${Math.floor(50 + glowIntensity * 90).toString(16)}`,
+        transform: isActive ? "scale(1.08)" : "scale(1)",
+        borderColor: isActive ? `${C.cyan}` : `${C.cyan}60`,
+      }}
+      onDragOver={(e) => {
+        if (!isActive) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }}
+    >
+      <svg
+        viewBox="0 0 160 160"
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }}
+      >
+        <defs>
+          <radialGradient id="nucleusCoreGlow" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor={C.cyan} stopOpacity="0.8" />
+            <stop offset="55%" stopColor={C.purple} stopOpacity="0.3" />
+            <stop offset="100%" stopColor={C.bg} stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="nucleusRing" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={C.cyan} />
+            <stop offset="100%" stopColor={C.purple} />
+          </linearGradient>
+        </defs>
+        <circle cx="80" cy="80" r="62" fill="url(#nucleusCoreGlow)" opacity="0.95" />
+        <circle cx="80" cy="80" r="68" fill="none" stroke="url(#nucleusRing)" strokeWidth="2" strokeOpacity="0.9" strokeDasharray="7 8" />
+        <circle cx="80" cy="80" r="48" fill="none" stroke={C.cyan} strokeOpacity="0.22" strokeWidth="1.5" />
+        <ellipse cx="80" cy="80" rx="46" ry="20" fill="none" stroke={C.cyan} strokeOpacity="0.22" strokeWidth="1.4" transform="rotate(-28 80 80)" />
+        <ellipse cx="80" cy="80" rx="38" ry="14" fill="none" stroke={C.purple} strokeOpacity="0.28" strokeWidth="1.2" transform="rotate(22 80 80)" />
+        <circle cx="56" cy="58" r="4" fill={C.cyan} opacity="0.95" />
+        <circle cx="104" cy="56" r="3" fill={C.purple} opacity="0.9" />
+        <circle cx="111" cy="101" r="2.6" fill={C.green} opacity="0.85" />
+        <circle cx="58" cy="106" r="2.4" fill={C.yellow} opacity="0.8" />
+      </svg>
+      <div style={{
+        position: "absolute",
+        width: "56%",
+        height: "56%",
+        borderRadius: "50%",
+        background: `radial-gradient(circle, ${C.cyan}48, transparent 72%)`,
+        filter: "blur(10px)",
+      }} />
+      <div style={{
+        position: "relative",
+        zIndex: 2,
+        textAlign: "center",
+        fontSize: 34,
+        marginBottom: 10,
+        textShadow: `0 0 18px ${C.cyan}90`,
+      }}>
+        {isCorrect ? "⚛️" : "🔬"}
+      </div>
+      <div style={{
+        position: "relative",
+        zIndex: 2,
+        fontSize: 11,
+        fontWeight: 700,
+        color: C.cyan,
+        textAlign: "center",
+        maxWidth: "84%",
+        lineHeight: 1.35,
+      }}>
+        {isCorrect ? `✓ ${correctAnswerText}` : "Arrastra la respuesta"}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// DATA CELL — Draggable Option
+// ═══════════════════════════════════════════
+function DataCell({ label, index, isDragging, onDragStart, onDragEnd, isDisabled }) {
+  const cellColors = [C.purple, C.cyan, C.green, C.yellow];
+  const cellColor = cellColors[index];
+
+  return (
+    <div
+      draggable={!isDisabled}
+      onDragStart={(e) => {
+        if (!isDisabled) onDragStart(e, index, { label, cellColor });
+      }}
+      onDragEnd={(e) => onDragEnd(e, index)}
+      style={{
+        cursor: isDisabled ? "not-allowed" : "grab",
+        userSelect: "none",
+        width: 238,
+        minHeight: 192,
+        maxWidth: 238,
+        borderRadius: 18,
+        border: `2px solid ${cellColor}60`,
+        background: `linear-gradient(135deg, ${cellColor}18, ${cellColor}08 60%, rgba(255,255,255,0.02))`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 18,
+        textAlign: "center",
+        fontSize: 13,
+        fontWeight: 700,
+        color: C.text,
+        transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        transform: isDragging ? "scale(1.08) rotate(2deg)" : "scale(1)",
+        boxShadow: isDragging 
+          ? `0 10px 28px ${cellColor}28, inset 0 0 16px ${cellColor}12`
+          : `0 4px 12px rgba(0,0,0,0.2)`,
+        opacity: isDisabled ? 0.4 : 1,
+        pointerEvents: isDisabled ? "none" : "auto",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <svg
+        viewBox="0 0 156 154"
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0.95 }}
+      >
+        <defs>
+          <linearGradient id={`cellGrad-${index}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={cellColor} stopOpacity="0.42" />
+            <stop offset="100%" stopColor={cellColor} stopOpacity="0.04" />
+          </linearGradient>
+        </defs>
+        {/* Forma decorativa centrada y ampliada; ajuste de translate para mantener el centro al escalar */}
+        <g transform="translate(-8.7,-8.5) scale(1.12)">
+          <path d="M20 26 Q78 4 136 26 Q148 77 136 128 Q78 150 20 128 Q8 77 20 26 Z" fill={`url(#cellGrad-${index})`} stroke={cellColor} strokeOpacity="0.32" strokeWidth="1.4" />
+          <circle cx="48" cy="42" r="7" fill={cellColor} fillOpacity="0.16" />
+          <circle cx="110" cy="108" r="6.2" fill={cellColor} fillOpacity="0.12" />
+          <path d="M36 102 C50 92, 60 90, 72 96" stroke={cellColor} strokeOpacity="0.22" strokeWidth="1.6" fill="none" />
+        </g>
+      </svg>
+      <div style={{
+        position: "absolute",
+        top: 7,
+        right: 9,
+        fontSize: 10,
+        fontWeight: 800,
+        color: cellColor,
+        opacity: 0.6,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        zIndex: 1,
+      }}>
+        {String.fromCharCode(65 + index)}
+      </div>
+      <div style={{ lineHeight: 1.25, padding: "12px 18px", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "break-word", hyphens: "auto", position: "relative", zIndex: 1, maxWidth: "100%" }}>
+        {label}
+      </div>
+      {isDragging && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 18,
+          border: `2px solid ${cellColor}`,
+          animation: "pulse 0.6s infinite",
+        }} />
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// PARTICLE POOL — Absorption Effect
+// ═══════════════════════════════════════════
+function ParticlePool({ triggerEmit, cellColor }) {
+  const [particles, setParticles] = useState([]);
+  const particlesRef = useRef([]);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (!triggerEmit) return;
+
+    const newParticles = Array.from({ length: 14 }).map((_, i) => {
+      const angle = (i / 14) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+      const speed = 1.8 + Math.random() * 2.8;
+      return {
+        id: `${Date.now()}-${i}`,
+        x: 80 + Math.cos(angle) * (54 + Math.random() * 24),
+        y: 80 + Math.sin(angle) * (54 + Math.random() * 24),
+        vx: Math.cos(angle) * speed * -1,
+        vy: Math.sin(angle) * speed * -1,
+        life: 1,
+        r: 2.5 + Math.random() * 4.2,
+        color: cellColor,
+      };
+    });
+
+    particlesRef.current = newParticles;
+    setParticles([...particlesRef.current]);
+
+    const animate = () => {
+      particlesRef.current = particlesRef.current.map(p => ({
+        ...p,
+        x: p.x + p.vx,
+        y: p.y + p.vy + 0.12,
+        life: p.life - 0.03,
+        vy: p.vy + 0.08,
+        r: Math.max(0.8, p.r * 0.992),
+      })).filter(p => p.life > 0);
+
+      setParticles([...particlesRef.current]);
+      if (particlesRef.current.length > 0) {
+        rafRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      particlesRef.current = [];
+    };
+  }, [triggerEmit, cellColor]);
+
+  return (
+    <svg
+      viewBox="0 0 160 160"
+      aria-hidden="true"
+      style={{ position: "absolute", inset: 0, width: 160, height: 160, overflow: "visible", pointerEvents: "none", zIndex: 3 }}
+    >
+      <defs>
+        <filter id="particleGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2.2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      {particles.map(p => (
+        <circle
+          key={p.id}
+          cx={p.x}
+          cy={p.y}
+          r={p.r}
+          fill={p.color}
+          opacity={Math.max(0, p.life)}
+          filter="url(#particleGlow)"
+        />
+      ))}
+    </svg>
+  );
+}
+
+// ═══════════════════════════════════════════
+// ELECTRIC BAR — Energy Fill Indicator
+// ═══════════════════════════════════════════
+function ElectricBar({ fillPercentage, isAnimating }) {
+  const displayPercent = Math.round(fillPercentage * 100);
+
+  return (
+    <div style={{ width: "100%", marginTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ width: 12, height: 12, borderRadius: 6, background: `linear-gradient(90deg, ${C.cyan}, ${C.purple})`, boxShadow: `0 0 10px ${C.cyan}40` }} />
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.cyan }}>Energía</div>
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.yellow, fontFamily: "Space Mono" }}>{displayPercent}%</div>
+      </div>
+
+      <div ref={(el)=>{ if(el) el.dataset.role = 'electric-bar'; }} style={{
+        width: "100%",
+        height: 14,
+        borderRadius: 10,
+        background: `linear-gradient(90deg, rgba(10,10,10,0.18), rgba(10,10,10,0.12))`,
+        border: `1px solid rgba(255,255,255,0.04)`,
+        overflow: "hidden",
+        position: "relative",
+        marginTop: 8,
+        boxShadow: `inset 0 -6px 18px rgba(0,0,0,0.4), 0 8px 30px rgba(0,0,0,0.35)`
+      }}>
+        <div style={{
+          width: `${displayPercent}%`,
+          height: "100%",
+          background: `linear-gradient(90deg, ${C.cyan}, ${C.purple})`,
+          transition: "width 0.6s cubic-bezier(0.22, 1, 0.36, 1)",
+          boxShadow: isAnimating ? `0 0 26px ${C.purple}60, inset 0 0 18px ${C.cyan}60` : "none",
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+        }}>
+          {/* bulb */}
+          <div style={{ width: 20, height: 20, borderRadius: 10, marginRight: -8, background: C.yellow, boxShadow: `0 0 18px ${C.yellow}`, border: `2px solid ${C.yellow}30` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// FEEDBACK TOAST — Immediate Response
+// ═══════════════════════════════════════════
+function FeedbackToast({ type, xpGain, correctAnswer, animated }) {
+  if (!animated) return null;
+
+  const isCorrect = type === "correct";
+  const bgColor = isCorrect ? C.green : C.red;
+  const icon = isCorrect ? "✨" : "❌";
+  const title = isCorrect ? "¡Correcto!" : "Incorrecto";
+
+  return (
+    <div
+      className="fade-in"
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 1000,
+        padding: 20,
+        borderRadius: 16,
+        background: `${bgColor}15`,
+        border: `2px solid ${bgColor}`,
+        textAlign: "center",
+        minWidth: 200,
+        boxShadow: `0 8px 32px ${bgColor}30`,
+      }}
+    >
+      <div style={{ fontSize: 40, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color: bgColor, marginBottom: 6 }}>
+        {title}
+      </div>
+      {isCorrect ? (
+        <div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: C.yellow, fontFamily: "Space Mono" }}>
+            +{xpGain} XP
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+            ¡Energía correcta absorbida!
+          </div>
+        </div>
+      ) : (
+        <div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>
+            La respuesta correcta era:
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.cyan, marginTop: 4 }}>
+            {correctAnswer}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
+// QUIZ SCREEN
+// ═══════════════════════════════════════════
 function QuizScreen({ onComplete }) {
   const [qIdx, setQIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
   const [answered, setAnswered] = useState(false);
   const [showQuestion, setShowQuestion] = useState(false);
   const [totalXP, setTotalXP] = useState(0);
   const [streak, setStreak] = useState(0);
   const [done, setDone] = useState(false);
-  const [timerKey, setTimerKey] = useState(0);
-  const [showXP, setShowXP] = useState(null);
-  const [autoAdvancePending, setAutoAdvancePending] = useState(false);
+  const [draggedCell, setDraggedCell] = useState(null);
+  const [nucleusActive, setNucleusActive] = useState(false);
+  const [particleTrigger, setParticleTrigger] = useState(false);
+  const [particleColor, setParticleColor] = useState(null);
+  const [feedbackType, setFeedbackType] = useState(null);
+  const [electricFill, setElectricFill] = useState(0);
+  const nucleusWrapperRef = useRef(null);
+  const barRef = useRef(null);
 
   const q = QUIZ_QUESTIONS[qIdx];
 
-  const handleAnswer = (idx) => {
-    if (answered || !showQuestion) return;
-    setSelected(idx);
-    setAnswered(true);
-    const correct = idx === q.ans;
-    const xpEarned = correct ? q.xp + (streak >= 2 ? 50 : 0) : 0;
-    if (xpEarned) setShowXP(xpEarned);
-    setTotalXP(p => p + xpEarned);
-    setStreak(p => correct ? p+1 : 0);
-    if (!correct) {
-      setAutoAdvancePending(true);
-      setTimeout(() => {
-        setAutoAdvancePending(false);
-        next();
-      }, 900);
+  useEffect(() => {
+    const timeout = setTimeout(() => setShowQuestion(true), 300);
+    return () => clearTimeout(timeout);
+  }, [qIdx]);
+
+  const cellColors = ["#9D6EF8", "#22D3EE", "#4ADE80", "#F59E0B"];
+
+  const playSound = (soundName) => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (soundName === "correct") {
+        const osc1 = audioContext.createOscillator();
+        const osc2 = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc1.frequency.value = 800;
+        osc2.frequency.value = 600;
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioContext.destination);
+        gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        osc1.start(audioContext.currentTime);
+        osc2.start(audioContext.currentTime + 0.1);
+        osc1.stop(audioContext.currentTime + 0.3);
+        osc2.stop(audioContext.currentTime + 0.3);
+      } else if (soundName === "wrong") {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.frequency.value = 100;
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        osc.start(audioContext.currentTime);
+        osc.stop(audioContext.currentTime + 0.2);
+      }
+    } catch (e) {
+      console.log("Audio context not available");
     }
   };
 
-  const next = () => {
-    if (qIdx >= QUIZ_QUESTIONS.length-1) { setDone(true); return; }
-    setQIdx(q => q+1);
-    setSelected(null);
-    setAnswered(false);
-    setShowXP(null);
-    setShowQuestion(false);
-    setTimerKey(k => k+1);
+  const handleDragStart = (e, idx, data) => {
+    setDraggedCell(idx);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("cellIndex", idx);
+    setNucleusActive(true);
   };
 
-  const optColors = ["#9D6EF8","#22D3EE","#4ADE80","#F59E0B"];
+  const handleDragEnd = (e, idx) => {
+    setDraggedCell(null);
+    setNucleusActive(false);
+  };
 
-  if (done) return (
-    <div style={{ padding:28, flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <Card style={{ padding:40, maxWidth:480, width:"100%", textAlign:"center" }} glow={C.green}>
-        <div style={{ fontSize:64, marginBottom:16 }}>🎉</div>
-        <h2 style={{ fontSize:28, fontWeight:800, marginBottom:8 }}>¡Quiz completado!</h2>
-        <p style={{ color:C.muted, marginBottom:24 }}>Demostraste que entiendes el dataset de YouTube.</p>
-        <div style={{ background:`${C.yellow}15`, border:`1px solid ${C.yellow}25`, borderRadius:12, padding:20, marginBottom:24 }}>
-          <div style={{ fontSize:42, fontWeight:900, color:C.yellow, fontFamily:"Space Mono" }}>+{totalXP} XP</div>
-          <div style={{ color:C.muted, fontSize:14 }}>¡Ganados en este quiz!</div>
-          {streak > 1 && <div style={{ marginTop:8, color:C.green, fontWeight:700 }}>🔥 Racha de {streak} correctas</div>}
-        </div>
-        <Btn onClick={()=>onComplete(totalXP)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
-          Siguiente fase → Detective de patrones 📊
-        </Btn>
-      </Card>
-    </div>
-  );
+  const handleNucleusDrop = (e) => {
+    e.preventDefault();
+    if (answered) return;
+
+    const cellIdx = parseInt(e.dataTransfer.getData("cellIndex"));
+    const isCorrect = cellIdx === q.ans;
+
+    setAnswered(true);
+    setFeedbackType(isCorrect ? "correct" : "incorrect");
+    setParticleTrigger(true);
+    setParticleColor(cellColors[cellIdx]);
+
+    if (isCorrect) {
+      setElectricFill(0);
+      let progress = 0;
+      const fillInterval = setInterval(() => {
+        progress += 0.05;
+        setElectricFill(Math.min(progress, 1));
+        if (progress >= 1) clearInterval(fillInterval);
+      }, 60);
+
+      const xpEarned = q.xp + (streak >= 2 ? 50 : 0);
+      setTotalXP(p => p + xpEarned);
+      setStreak(p => p + 1);
+
+      playSound("correct");
+
+      setTimeout(() => {
+        next();
+      }, 1200);
+    } else {
+      playSound("wrong");
+      setStreak(0);
+      setTimeout(() => {
+        next();
+      }, 900);
+    }
+
+    setNucleusActive(false);
+  };
+
+  const next = () => {
+    if (qIdx >= QUIZ_QUESTIONS.length - 1) {
+      setDone(true);
+      return;
+    }
+    setQIdx(q => q + 1);
+    setAnswered(false);
+    setFeedbackType(null);
+    setParticleTrigger(false);
+    setElectricFill(0);
+    setShowQuestion(false);
+  };
+
+  if (done) {
+    return (
+      <div style={{ padding: 28, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Card style={{ padding: 40, maxWidth: 480, width: "100%", textAlign: "center" }} glow={C.green}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+          <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>¡Quiz completado!</h2>
+          <p style={{ color: C.muted, marginBottom: 24 }}>Demostraste que entiendes el dataset de YouTube. Absorbiste toda la energía correcta.</p>
+          <div style={{ background: `${C.yellow}15`, border: `1px solid ${C.yellow}25`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
+            <div style={{ fontSize: 42, fontWeight: 900, color: C.yellow, fontFamily: "Space Mono" }}>+{totalXP} XP</div>
+            <div style={{ color: C.muted, fontSize: 14 }}>¡Ganados en El Alquimista!</div>
+            {streak > 1 && <div style={{ marginTop: 8, color: C.green, fontWeight: 700 }}>🔥 Racha final: {streak} correctas</div>}
+          </div>
+          <Btn onClick={() => onComplete(totalXP)} variant="success" size="lg" style={{ width: "100%", justifyContent: "center" }}>
+            Siguiente fase → Detective de patrones 📊
+          </Btn>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
-      {showXP && <XPPop amount={showXP} onDone={()=>setShowXP(null)}/>}
-
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div>
-          <Chip label={`Pregunta ${qIdx+1} de ${QUIZ_QUESTIONS.length}`} color={C.cyan}/>
-          <h1 style={{ fontSize:22, fontWeight:800, marginTop:6 }}>❓ Fase teórica: concepto antes de responder</h1>
-        </div>
-        <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-          {streak >= 2 && <div style={{ background:`${C.red}20`, border:`1px solid ${C.red}30`, borderRadius:20, padding:"4px 12px", color:C.red, fontWeight:700, fontSize:13 }}>🔥 Racha ×{streak}</div>}
-          <div style={{ background:`${C.yellow}15`, border:`1px solid ${C.yellow}25`, borderRadius:20, padding:"4px 14px" }}>
-            <span style={{ color:C.yellow, fontWeight:800, fontFamily:"Space Mono" }}>⚡ {totalXP} XP</span>
+    <div style={{
+      padding: 28,
+      flex: 1,
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "center",
+      background: C.bg,
+      overflowY: "auto",
+    }}>
+      <Card style={{
+        padding: 24,
+        maxWidth: 920,
+        width: "100%",
+        position: "relative",
+        maxHeight: "calc(100vh - 120px)",
+        overflowY: "auto",
+      }}>
+        
+        {/* Header */}
+        <div style={{
+          fontSize: 12,
+          color: C.cyan,
+          fontWeight: 800,
+          letterSpacing: 1,
+          marginBottom: 20,
+          textTransform: "uppercase",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <span>🧪 Pregunta {qIdx + 1} de {QUIZ_QUESTIONS.length}</span>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div ref={barRef} style={{ width: 320 }}>
+              <ElectricBar fillPercentage={electricFill} isAnimating={answered && feedbackType === "correct"} />
+            </div>
+            <span style={{ color: C.yellow }}>⚡ {totalXP} XP</span>
           </div>
-          <Timer key={timerKey} totalSeconds={60} onEnd={()=>{ setAnswered(true); setSelected(-1); }} running={!answered}/>
         </div>
-      </div>
 
-      {/* Progress */}
-      <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:2 }}>
-        <div style={{ width:`${(qIdx/QUIZ_QUESTIONS.length)*100}%`, height:"100%", background:`linear-gradient(90deg,${C.cyan},${C.purple})`, borderRadius:2, transition:"width 0.4s" }}/>
-      </div>
-
-      {/* Concept first; then question/options when user presses 'Mostrar pregunta' */}
-      <Card className="fade-in" style={{ padding:28 }} glow={C.purple}>
-        <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>{showQuestion?"Concepto previo":"Concepto"}</div>
-        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-          <div style={{ padding:16, borderRadius:14, background:`${C.cyan}10`, border:`1px solid ${C.cyan}30` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
-              <span style={{ fontSize:20 }}>📘</span>
-              <h2 style={{ fontSize:20, fontWeight:800, lineHeight:1.3 }}>{q.concept}</h2>
-            </div>
-            <div style={{ color:C.muted, fontSize:14, lineHeight:1.5 }}>{q.conceptText}</div>
+        {/* Concept + Question */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{
+            background: `${C.purple}15`,
+            border: `1px solid ${C.purple}40`,
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 16,
+            fontSize: 13,
+            color: C.text,
+            lineHeight: 1.6,
+          }}>
+            <strong style={{ color: C.purple }}>💡 Concepto:</strong> {q.conceptText}
           </div>
 
-          {!showQuestion ? (
-            <div style={{ display:"flex", justifyContent:"center" }}>
-              <button onClick={() => setShowQuestion(true)} style={{ background:`linear-gradient(90deg,${C.cyan},${C.purple})`, border:"none", padding:"12px 20px", borderRadius:10, fontWeight:800, color:"#061022", cursor:"pointer" }}>Mostrar pregunta →</button>
-            </div>
-          ) : (
-            <div style={{ padding:16, borderRadius:14, background:`rgba(255,255,255,0.03)`, border:`1px solid ${C.border}` }}>
-              <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:8 }}>Pregunta</div>
-              <h2 style={{ fontSize:22, fontWeight:800, lineHeight:1.4 }}>{q.q}</h2>
-            </div>
+          {showQuestion && (
+            <h3 className="fade-in" style={{
+              fontSize: 20,
+              fontWeight: 700,
+              lineHeight: 1.5,
+              color: C.text,
+            }}>
+              {q.q}
+            </h3>
           )}
         </div>
-      </Card>
 
-      {/* Options shown only after concept revealed */}
-      {showQuestion && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
-          {q.opts.map((opt,i)=>{
-            const isCorrect = i===q.ans;
-            const isSelected = i===selected;
-            let bg = `${optColors[i]}12`, border = `${optColors[i]}30`, textColor = C.text;
-            if (answered) {
-              if (isCorrect) { bg=`${C.green}20`; border=C.green; textColor=C.green; }
-              else if (isSelected && !isCorrect) { bg=`${C.red}20`; border=C.red; textColor=C.red; }
-              else { bg="rgba(255,255,255,0.03)"; border="rgba(255,255,255,0.06)"; textColor=C.dim; }
-            }
-            return (
-              <button key={i} onClick={()=>handleAnswer(i)} disabled={answered}
-                className={isSelected&&!answered?"pop-in":""}
-                style={{ background:bg, border:`2px solid ${border}`, borderRadius:14, padding:"18px 20px",
-                  cursor:answered?"default":"pointer", textAlign:"left", transition:"all 0.25s", display:"flex", alignItems:"center", gap:14 }}>
-                <div style={{ width:32, height:32, borderRadius:8, background:answered&&isCorrect?C.green:answered&&isSelected&&!isCorrect?C.red:`${optColors[i]}25`,
-                  display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:answered?(isCorrect||isSelected)?C.text:C.dim:optColors[i], flexShrink:0 }}>
-                  {answered ? (isCorrect?"✓":isSelected?"✗":String.fromCharCode(65+i)) : String.fromCharCode(65+i)}
-                </div>
-                <span style={{ fontWeight:600, fontSize:15, color:textColor }}>{opt}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Feedback */}
-      {answered && (
-        <Card className="fade-in" style={{ padding:20, background:selected===q.ans?`${C.green}10`:`${C.red}08`, border:`1px solid ${selected===q.ans?C.green:C.red}30` }}>
-          <div style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
-            <span style={{ fontSize:24 }}>{selected===q.ans?"🎉":"💡"}</span>
-            <div style={{ flex:1 }}>
-              <div style={{ fontWeight:800, fontSize:15, color:selected===q.ans?C.green:C.red, marginBottom:4 }}>
-                {selected===q.ans?"¡Correcto! +" + (q.xp+(streak>2?50:0)) + " XP":"Respuesta incorrecta"}
-              </div>
-              <div style={{ color:C.muted, fontSize:13 }}>{q.hint}</div>
+        {/* Nucleus + DataCells Grid */}
+        {showQuestion && (
+          <div
+            className="fade-in"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 40,
+              marginBottom: 30,
+            }}
+          >
+            {/* NUCLEUS */}
+            <div
+              ref={nucleusWrapperRef}
+              style={{ position: "relative", width: 160, height: 160 }}
+              onDragOver={(e) => {
+                e.preventDefault();
+              }}
+              onDrop={handleNucleusDrop}
+            >
+              <NucleusCore
+                isActive={nucleusActive}
+                isCorrect={answered && feedbackType === "correct"}
+                correctAnswerText={q.opts[q.ans]}
+              />
+              <ParticlePool
+                triggerEmit={particleTrigger}
+                cellColor={particleColor}
+              />
             </div>
-            <Btn onClick={next} variant={selected===q.ans?"success":"secondary"} style={{ flexShrink:0 }}>
-              {qIdx>=QUIZ_QUESTIONS.length-1?"Ver resultados →":"Siguiente →"}
-            </Btn>
+
+            {/* DATA CELLS (responsive grid) */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(238px, 1fr))",
+              gap: 18,
+              width: "100%",
+              maxWidth: 1180,
+              justifyItems: "center",
+              margin: "0 auto",
+            }}>
+              {q.opts.map((opt, idx) => (
+                <DataCell
+                  key={idx}
+                  index={idx}
+                  label={opt}
+                  isDragging={draggedCell === idx}
+                  isDisabled={answered}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                />
+              ))}
+            </div>
+
+            {/* ELECTRIC BAR */}
+            <ElectricBar
+              fillPercentage={electricFill}
+              isAnimating={answered && feedbackType === "correct"}
+            />
           </div>
-        </Card>
-      )}
+        )}
+
+        {/* FEEDBACK TOAST */}
+        <FeedbackToast
+          type={feedbackType}
+          xpGain={feedbackType === "correct" ? q.xp + (streak >= 2 ? 50 : 0) : 0}
+          correctAnswer={q.opts[q.ans]}
+          animated={answered && feedbackType !== null}
+        />
+
+        {/* Hint */}
+        <div style={{
+          fontSize: 12,
+          color: C.muted,
+          fontStyle: "italic",
+          marginTop: 20,
+          paddingTop: 14,
+          borderTop: `1px solid ${C.cyan}20`,
+        }}>
+          💬 Pista: {q.hint}
+        </div>
+        {/* cable removed per user request */}
+      </Card>
     </div>
   );
 }
+
+// CableConnector removed — kept history in git if needed
 
 // ═══════════════════════════════════════════
 // MISSION SCREEN — PHASE 3
