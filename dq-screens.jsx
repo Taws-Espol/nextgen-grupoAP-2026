@@ -932,6 +932,264 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
 // ═══════════════════════════════════════════
 // CHART EDITOR SCREEN (KEY SCREEN)
 // ═══════════════════════════════════════════
+function getCinematicPlacement(focus, preferredPlacement=null, forcePreferred=false) {
+  const map = {
+    left: { bottom:20, right:20 },
+    right: { bottom:20, left:20 },
+    axes: { bottom:20, right:20 },
+    chart: { top:20, right:20 },
+    chartTypes: { top:20, left:20 },
+    header: { bottom:20, left:20 },
+    filters: { bottom:20, right:20 },
+    table: { top:20, right:20 },
+    side: { top:20, left:20 },
+    none: { bottom:20, left:"50%", transform:"translateX(-50%)" },
+  };
+
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return map[focus] || map.none;
+  }
+
+  try {
+    const selectors = [
+      `[data-focus="${focus}"]`,
+      `.${"focus-"+focus}`,
+      `#${focus}`,
+      `[data-tutorial="${focus}"]`,
+      `[data-tut="${focus}"]`,
+      `[aria-label="${focus}"]`,
+    ];
+    let el = null;
+    for (const s of selectors) {
+      try { el = document.querySelector(s); } catch(e) { el = null; }
+      if (el) break;
+    }
+    if (!el) return map[focus] || map.none;
+
+    const rect = el.getBoundingClientRect();
+    const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+    const overlayW = Math.min(560, vw - 40);
+    const overlayH = Math.min(260, vh - 80);
+
+    const clamp = (v, minV, maxV) => Math.max(minV, Math.min(maxV, v));
+
+    const makeStyle = (placement) => {
+      if (placement === "top") {
+        const left = clamp(rect.left + rect.width/2 - overlayW/2, 20, vw - overlayW - 20);
+        const top = clamp(rect.top - overlayH - 12, 20, vh - overlayH - 20);
+        return { left: `${left}px`, top: `${top}px` };
+      }
+      if (placement === "bottom") {
+        const left = clamp(rect.left + rect.width/2 - overlayW/2, 20, vw - overlayW - 20);
+        const top = clamp(rect.bottom + 12, 20, vh - overlayH - 20);
+        return { left: `${left}px`, top: `${top}px` };
+      }
+      if (placement === "left") {
+        const left = clamp(rect.left - overlayW - 12, 20, vw - overlayW - 20);
+        const top = clamp(rect.top, 20, vh - overlayH - 20);
+        return { left: `${left}px`, top: `${top}px` };
+      }
+      if (placement === "right") {
+        const left = clamp(rect.right + 12, 20, vw - overlayW - 20);
+        const top = clamp(rect.top, 20, vh - overlayH - 20);
+        return { left: `${left}px`, top: `${top}px` };
+      }
+      return null;
+    };
+
+    const space = {
+      top: rect.top,
+      bottom: vh - rect.bottom,
+      left: rect.left,
+      right: vw - rect.right,
+    };
+
+    // allow forcing preferred placement for specific tutorial steps
+    if (preferredPlacement && forcePreferred) {
+      const forced = makeStyle(preferredPlacement);
+      if (forced) return forced;
+    }
+
+    // if a preferred placement was supplied, only use it when it fits (enough free space)
+    if (preferredPlacement) {
+      if (preferredPlacement === 'top' && space.top >= overlayH + 24) return makeStyle('top');
+      if (preferredPlacement === 'bottom' && space.bottom >= overlayH + 24) return makeStyle('bottom');
+      if (preferredPlacement === 'left' && space.left >= overlayW + 24) return makeStyle('left');
+      if (preferredPlacement === 'right' && space.right >= overlayW + 24) return makeStyle('right');
+      // if preferred doesn't have space, fall through to heuristics
+    }
+
+    const fits = [];
+    if (space.bottom >= overlayH + 24) fits.push({ name: 'bottom', style: makeStyle('bottom'), score: space.bottom });
+    if (space.top >= overlayH + 24) fits.push({ name: 'top', style: makeStyle('top'), score: space.top });
+    if (space.right >= overlayW + 24) fits.push({ name: 'right', style: makeStyle('right'), score: space.right });
+    if (space.left >= overlayW + 24) fits.push({ name: 'left', style: makeStyle('left'), score: space.left });
+
+    if (fits.length) {
+      fits.sort((a,b)=>b.score - a.score);
+      return fits[0].style;
+    }
+
+    // fallback: try non-overlapping candidates (best-effort)
+    const candidates = [
+      { name: 'bottom', style: makeStyle('bottom') },
+      { name: 'top', style: makeStyle('top') },
+      { name: 'right', style: makeStyle('right') },
+      { name: 'left', style: makeStyle('left') },
+      { name: 'center', style: { left: `${Math.max(20, (vw - overlayW)/2)}px`, top: `${Math.min(vh - overlayH - 20, rect.bottom + 12)}px` } },
+    ];
+
+    const overlaps = (s) => {
+      const left = parseFloat(s.left);
+      const top = parseFloat(s.top);
+      const right = left + overlayW;
+      const bottom = top + overlayH;
+      if (right < rect.left || left > rect.right || bottom < rect.top || top > rect.bottom) return false;
+      return true;
+    };
+
+    for (const c of candidates) {
+      if (!overlaps(c.style)) return c.style;
+    }
+
+    return map.none;
+  } catch (e) {
+    return map[focus] || map.none;
+  }
+}
+
+function CinematicGuideOverlay({ step, total, accent, onNext, onSkip }) {
+  if (!step) return null;
+  const placement = getCinematicPlacement(step.focus, step.placement, !!step.forcePlacement);
+
+  try {
+    const selectors = [
+      `[data-focus="${step.focus}"]`,
+      `.${"focus-"+step.focus}`,
+      `#${step.focus}`,
+      `[data-tutorial="${step.focus}"]`,
+      `[data-tut="${step.focus}"]`,
+      `[aria-label="${step.focus}"]`,
+    ];
+    let targetEl = null;
+    for (const s of selectors) {
+      try { targetEl = document.querySelector(s); } catch(e) { targetEl = null; }
+      if (targetEl) break;
+    }
+
+    const targetRect = targetEl ? targetEl.getBoundingClientRect() : null;
+    const holePad = 8;
+    const hole = targetRect ? {
+      left: Math.max(0, targetRect.left - holePad),
+      top: Math.max(0, targetRect.top - holePad),
+      right: Math.min(window.innerWidth, targetRect.right + holePad),
+      bottom: Math.min(window.innerHeight, targetRect.bottom + holePad),
+    } : null;
+
+    const dimStyle = {
+      position: 'fixed',
+      zIndex: 59,
+      background: 'rgba(4,6,14,0.48)',
+      backdropFilter: 'blur(2px) saturate(0.85)',
+    };
+
+    const backdrop = hole ? (
+      <>
+        <div onClick={onNext} style={{ ...dimStyle, left:0, top:0, right:0, height:`${hole.top}px` }} />
+        <div onClick={onNext} style={{ ...dimStyle, left:0, top:`${hole.top}px`, width:`${hole.left}px`, height:`${Math.max(0, hole.bottom-hole.top)}px` }} />
+        <div onClick={onNext} style={{ ...dimStyle, left:`${hole.right}px`, top:`${hole.top}px`, right:0, height:`${Math.max(0, hole.bottom-hole.top)}px` }} />
+        <div onClick={onNext} style={{ ...dimStyle, left:0, top:`${hole.bottom}px`, right:0, bottom:0 }} />
+      </>
+    ) : (
+      <div onClick={onNext} style={{ ...dimStyle, inset:0 }} />
+    );
+
+    let connector = null;
+    if (targetRect) {
+      const cx = targetRect.left + targetRect.width/2;
+      const cy = targetRect.top + targetRect.height/2;
+      const connStyle = {
+        position: 'fixed',
+        left: `${Math.max(8, cx - 22)}px`,
+        top: `${Math.max(8, cy - 22)}px`,
+        width: 44,
+        height: 44,
+        borderRadius: 44,
+        border: `2px solid ${accent}88`,
+        boxShadow: `0 0 22px ${accent}55`,
+        background: 'transparent',
+        zIndex: 10055,
+        pointerEvents: 'none',
+        animation: 'pulse 1.6s infinite',
+      };
+      connector = <div style={connStyle} />;
+    }
+
+    const cardStyle = {
+      position: 'fixed',
+      zIndex: 10060,
+      width: 'min(560px, calc(100vw - 40px))',
+      borderRadius: 16,
+      border: `${'1px solid ' + accent}88`,
+      background: `linear-gradient(135deg, ${accent}20, rgba(10,12,30,0.92))`,
+      boxShadow: `0 14px 40px ${accent}44`,
+      padding: 16,
+      ...placement,
+    };
+
+    const card = (
+      <div className="fade-in" style={cardStyle} onClick={(e)=>{ e.stopPropagation(); onNext(); }}>
+        <div style={{ display:"flex", gap:12, alignItems:"flex-start" }}>
+          <div style={{ position:"relative", width:58, height:58, borderRadius:"50%", background:`radial-gradient(circle at 30% 30%, #fff, ${accent})`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <div style={{ position:"absolute", inset:-7, borderRadius:"50%", border:`1px solid ${accent}66`, animation:"pulse 2s infinite" }} />
+            <span style={{ fontSize:28 }}>🧑‍🏫</span>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, flexWrap:"wrap", marginBottom:6 }}>
+              <div style={{ fontSize:15, fontWeight:900, color:accent }}>{step.title}</div>
+              <Chip label={`Cinemática ${step.index}/${total}`} color={accent} size="sm" />
+            </div>
+            <div style={{ color:C.text, fontSize:14, lineHeight:1.65 }}>{step.text}</div>
+            <div style={{ marginTop:10, display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+              <div style={{ fontSize:12, color:"rgba(255,255,255,0.75)", fontStyle:"italic" }}>Haz clic en cualquier lugar para continuar</div>
+              <Btn
+                size="sm"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); onSkip(); }}
+                style={{ border:`1px solid ${accent}66`, color:C.text }}
+              >
+                Saltar tutorial
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    if (typeof ReactDOM !== 'undefined' && typeof document !== 'undefined' && document.body) {
+      return ReactDOM.createPortal(
+        <>
+          {backdrop}
+          {connector}
+          {card}
+        </>,
+        document.body
+      );
+    }
+
+    return (
+      <div onClick={onNext} style={{ position: 'absolute', inset:0 }}>
+        {backdrop}
+        {connector}
+        {card}
+      </div>
+    );
+  } catch (e) {
+    return null;
+  }
+}
+
 function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false, initialProgress=null, onProgress }) {
   const [chartType, setChartType] = useState(initialProgress?.chartType || "bar");
   const [xAxis, setXAxis] = useState(initialProgress?.xAxis ?? null);
@@ -939,6 +1197,7 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
   const [catFilter, setCatFilter] = useState(initialProgress?.catFilter || "all");
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  const [tutorialStep, setTutorialStep] = useState(0);
 
   useEffect(() => {
     setChartType(initialProgress?.chartType || "bar");
@@ -949,6 +1208,53 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
 
   const cats = ["all","Entertainment","Gaming","Music","Kids","Cooking","Tech","Sports","DIY","Education"];
   const allCols = COLUMNS;
+
+  const chartTutorial = [
+    {
+      index: 1,
+      focus: "left",
+      title: "Bienvenida a GRAFICOS",
+      text: "Soy Tawsito Analista. Esta herramienta te ayuda a convertir datos en historias visuales. Empezamos por el panel izquierdo: aquí eliges las variables del dataset.",
+    },
+    {
+      index: 2,
+      focus: "axes",
+      placement: "top",
+      title: "Ejes para construir una pregunta",
+      text: "Arrastra una variable al eje X para agrupar y otra al eje Y para medir. Esta combinación define qué pregunta estás respondiendo con datos.",
+    },
+    {
+      index: 3,
+      focus: "chart",
+      placement: "top",
+      title: "Área de visualización",
+      text: "Aquí aparece el gráfico. Si ves una tendencia clara o una diferencia fuerte entre grupos, ya estás encontrando evidencia útil para tu análisis.",
+    },
+    {
+      index: 4,
+      focus: "right",
+      placement: "left",
+      title: "Controles de lectura",
+      text: "En este panel cambias tipo de gráfico y filtros. Esto te sirve para validar hipótesis: si el patrón se mantiene al filtrar, probablemente es robusto.",
+    },
+    {
+      index: 5,
+      focus: "chartTypes",
+      placement: "left",
+      title: "Tipos de gráficos: ¿cuál usar?",
+      text: "Barras comparan categorías, línea muestra evolución, scatter revela relaciones y pie muestra proporciones del total. Elegir bien el tipo evita conclusiones engañosas.",
+    },
+    {
+      index: 6,
+      focus: "none",
+      title: "Ahora juega como analista",
+      text: "Listo. Prueba una comparación simple: categoría en X y una métrica en Y. Luego cambia el gráfico y observa si la historia sigue siendo la misma.",
+    },
+  ];
+
+  useEffect(() => {
+    if (tutorialMode) setTutorialStep(0);
+  }, [tutorialMode]);
 
   useEffect(() => {
     if (onComplete) onComplete(200);
@@ -997,8 +1303,14 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
   const handleDropX = () => { if(dragging){setXAxis(dragging);setDragging(null);setDragOver(null);} };
   const handleDropY = () => { if(dragging){setYAxis(dragging);setDragging(null);setDragOver(null);} };
 
+  const tutorialActive = tutorialMode && tutorialStep < chartTutorial.length;
+  const currentTutorial = tutorialActive ? chartTutorial[tutorialStep] : null;
+  const highlight = (key) => tutorialActive && currentTutorial.focus === key;
+  const nextTutorialStep = () => setTutorialStep((s) => Math.min(chartTutorial.length, s + 1));
+  const skipTutorial = () => setTutorialStep(chartTutorial.length);
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden" }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
       {/* Top bar */}
       <div style={{ padding:"12px 20px", background:C.surface, borderBottom:`1px solid ${C.border}`, flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", gap:10, alignItems:"center", flexWrap:"wrap" }}>
@@ -1015,28 +1327,11 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
         </div>
       </div>
 
-      {tutorialMode && (
-        <div style={{ padding:"0 20px 12px" }}>
-          <Card style={{ padding:16, border:`1px solid ${C.purple}40`, background:`${C.purple}10` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-              <span style={{ fontSize:18 }}>🧭</span>
-              <div style={{ fontWeight:800, color:C.purple }}>Tutorial rápido de GRAFICOS</div>
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, fontSize:12, color:C.muted }}>
-              <div>1. Arrastra una columna numérica al eje Y para medirla.</div>
-              <div>2. Usa una columna de categoría o nombre en el eje X.</div>
-              <div>3. Cambia el tipo de gráfico según lo que quieras comparar.</div>
-              <div>4. Empieza simple: una sola métrica, una sola comparación.</div>
-            </div>
-          </Card>
-        </div>
-      )}
-
       {/* Main 3-panel layout */}
       <div style={{ display:"grid", gridTemplateColumns:"200px 1fr 220px", flex:1, overflow:"hidden" }}>
 
         {/* LEFT — Columns */}
-        <div style={{ background:C.surface, borderRight:`1px solid ${C.border}`, overflowY:"auto", padding:14 }}>
+        <div data-tutorial="left" style={{ background:C.surface, borderRight:`1px solid ${C.border}`, overflowY:"auto", padding:14, position:"relative", zIndex:highlight("left") ? 10050 : 1, boxShadow:highlight("left") ? `0 0 0 2px ${C.cyan}, 0 0 22px ${C.cyan}66` : "none", animation:highlight("left") ? "pulse 1.6s infinite" : "none" }}>
           <div style={{ fontSize:11, fontWeight:800, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Columnas del dataset</div>
           <div style={{ fontSize:11, color:C.dim, marginBottom:10 }}>Arrastra a Eje X o Eje Y</div>
           <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
@@ -1061,9 +1356,9 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
         </div>
 
         {/* CENTER — Chart area */}
-        <div style={{ display:"flex", flexDirection:"column", overflow:"hidden", background:C.bg }}>
+        <div style={{ display:"flex", flexDirection:"column", overflow:"hidden", background:C.bg, position:"relative", zIndex:highlight("chart") || highlight("axes") ? 10050 : 1 }}>
           {/* Axis drop zones */}
-          <div style={{ display:"flex", gap:10, padding:"10px 16px", flexShrink:0 }}>
+          <div data-tutorial="axes" style={{ display:"flex", gap:10, padding:"10px 16px", flexShrink:0, boxShadow:highlight("axes") ? `0 0 0 2px ${C.purple}, 0 0 20px ${C.purple}66` : "none", borderRadius:10, animation:highlight("axes") ? "pulse 1.6s infinite" : "none" }}>
             <div onDragOver={e=>{e.preventDefault();setDragOver("x");}} onDragLeave={()=>setDragOver(null)} onDrop={handleDropX}
               onClick={()=>{ if(xAxis){setXAxis(null); return;} }}
               style={{ flex:1, padding:"8px 14px", borderRadius:8, border:`2px dashed ${dragOver==="x"?C.purple:xAxis?C.purple:"rgba(157,110,248,0.3)"}`,
@@ -1083,15 +1378,15 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
           </div>
 
           {/* Chart */}
-          <div style={{ flex:1, padding:"0 20px", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div data-tutorial="chart" style={{ flex:1, padding:"0 20px", display:"flex", flexDirection:"column", overflow:"hidden", boxShadow:highlight("chart") ? `0 0 0 2px ${C.yellow}, inset 0 0 22px ${C.yellow}2e` : "none", borderRadius:12, animation:highlight("chart") ? "pulse 1.6s infinite" : "none" }}>
             {renderChart()}
           </div>
         </div>
 
         {/* RIGHT — Controls */}
-        <div style={{ background:C.surface, borderLeft:`1px solid ${C.border}`, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:14 }}>
+        <div data-tutorial="right" style={{ background:C.surface, borderLeft:`1px solid ${C.border}`, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:14, position:"relative", zIndex:highlight("right") || highlight("chartTypes") ? 10050 : 1, boxShadow:highlight("right") ? `0 0 0 2px ${C.green}, 0 0 22px ${C.green}66` : "none", animation:highlight("right") ? "pulse 1.6s infinite" : "none" }}>
           {/* Chart type */}
-          <div>
+          <div data-tutorial="chartTypes" style={{ boxShadow:highlight("chartTypes") ? `0 0 0 2px ${C.yellow}, 0 0 18px ${C.yellow}66` : "none", borderRadius:10, padding:highlight("chartTypes") ? 8 : 0, animation:highlight("chartTypes") ? "pulse 1.4s infinite" : "none" }}>
             <div style={{ fontSize:11, fontWeight:800, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>Tipo de gráfico</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
               {[{type:"bar",icon:"📊",label:"Barras"},{type:"scatter",icon:"⚡",label:"Scatter"},{type:"pie",icon:"🥧",label:"Pie"},{type:"line",icon:"📈",label:"Línea"}].map(ct=>(
@@ -1130,6 +1425,16 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
           </div>
         </div>
       </div>
+
+      {tutorialActive && (
+        <CinematicGuideOverlay
+          step={currentTutorial}
+          total={chartTutorial.length}
+          accent={C.purple}
+          onNext={nextTutorialStep}
+          onSkip={skipTutorial}
+        />
+      )}
     </div>
   );
 }
@@ -1719,6 +2024,7 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
   const [sortKey, setSortKey] = useState(initialProgress?.sortKey || "views");
   const [sortDir, setSortDir] = useState(initialProgress?.sortDir || "desc");
   const [hiddenRows, setHiddenRows] = useState(initialProgress?.hiddenRows || []);
+  const [tutorialStep, setTutorialStep] = useState(0);
 
   useEffect(() => { onVisit && onVisit(); }, []);
 
@@ -1737,6 +2043,45 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
 
   const categories = ["all", ...new Set(YT_DATA.map(d => d.category))];
   const countries = ["all", ...new Set(YT_DATA.map(d => d.country))];
+
+  const datasetTutorial = [
+    {
+      index: 1,
+      focus: "header",
+      title: "Llegaste a DATASETS",
+      text: "Soy Tawsito Analista. Aquí lees el estado real del problema en formato tabla: filas como canales y columnas como variables que luego podrás comparar.",
+    },
+    {
+      index: 2,
+      focus: "filters",
+      title: "Búsqueda y filtros",
+      text: "Este bloque te ayuda a recortar ruido. Buscar, filtrar por categoría o país y ordenar es la base para no sacar conclusiones con datos mezclados.",
+    },
+    {
+      index: 3,
+      focus: "table",
+      placement: "top",
+      forcePlacement: true,
+      title: "Lectura de la tabla",
+      text: "En la tabla puedes detectar extremos, comparar magnitudes y ubicar patrones preliminares. Es el paso previo a cualquier gráfico serio.",
+    },
+    {
+      index: 4,
+      focus: "side",
+      title: "Ocultar para comparar mejor",
+      text: "Este panel sirve para ocultar filas y quedarte con los casos importantes. Así puedes observar contrastes sin que todo compita por tu atención.",
+    },
+    {
+      index: 5,
+      focus: "none",
+      title: "Transición a GRAFICOS",
+      text: "Cuando ya entendiste qué variable mirar, ve a GRAFICOS para convertir esta lectura tabular en una visualización que comunique el hallazgo.",
+    },
+  ];
+
+  useEffect(() => {
+    if (tutorialMode) setTutorialStep(0);
+  }, [tutorialMode]);
 
   const filtered = YT_DATA.filter(d => {
     const txt = search.trim().toLowerCase();
@@ -1784,9 +2129,15 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
     else { setSortKey(k); setSortDir("desc"); }
   };
 
+  const tutorialActive = tutorialMode && tutorialStep < datasetTutorial.length;
+  const currentTutorial = tutorialActive ? datasetTutorial[tutorialStep] : null;
+  const highlight = (key) => tutorialActive && currentTutorial.focus === key;
+  const nextTutorialStep = () => setTutorialStep((s) => Math.min(datasetTutorial.length, s + 1));
+  const skipTutorial = () => setTutorialStep(datasetTutorial.length);
+
   return (
-    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:16 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:14, flexWrap:"wrap" }}>
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:16, position:"relative" }}>
+      <div data-tutorial="header" style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", gap:14, flexWrap:"wrap", position:"relative", zIndex:highlight("header") ? 10050 : 1, boxShadow:highlight("header") ? `0 0 0 2px ${C.cyan}, 0 0 22px ${C.cyan}66` : "none", borderRadius:12, animation:highlight("header") ? "pulse 1.6s infinite" : "none" }}>
         <div>
           <h1 style={{ fontSize:26, fontWeight:800, marginBottom:4 }}>DATASETS</h1>
           <p style={{ color:C.muted, fontSize:14 }}>Tabla interactiva para explorar datos con filtros, búsqueda y ordenamiento.</p>
@@ -1798,22 +2149,7 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
         </div>
       </div>
 
-      {tutorialMode && (
-        <Card style={{ padding:16, border:`1px solid ${C.cyan}40`, background:`${C.cyan}10` }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
-            <span style={{ fontSize:18 }}>🎓</span>
-            <div style={{ fontWeight:800, color:C.cyan }}>Tutorial rápido de DATASETS</div>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:10, fontSize:12, color:C.muted }}>
-            <div>1. Busca un canal, país o categoría para ubicarte en la tabla.</div>
-            <div>2. Filtra los datos para reducir el ruido y comparar grupos.</div>
-            <div>3. Ordena por vistas, subs o ingresos para encontrar patrones.</div>
-            <div>4. Después ve a GRAFICOS y convierte esa comparación en una visualización.</div>
-          </div>
-        </Card>
-      )}
-
-      <Card style={{ padding:14 }}>
+      <Card data-tutorial="filters" style={{ padding:14, position:"relative", zIndex:highlight("filters") ? 10050 : 1, boxShadow:highlight("filters") ? `0 0 0 2px ${C.purple}, 0 0 22px ${C.purple}66` : "none", animation:highlight("filters") ? "pulse 1.6s infinite" : "none" }}>
         <div style={{ display:"grid", gridTemplateColumns:"1.3fr 1fr 1fr auto auto", gap:10 }}>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por canal, categoría o país" />
           <select value={category} onChange={e=>setCategory(e.target.value)}>
@@ -1830,7 +2166,7 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
       </Card>
 
       <div style={{ display:"grid", gridTemplateColumns:"1fr 280px", gap:14, alignItems:"start" }}>
-        <Card style={{ overflowX:"auto" }}>
+        <Card data-tutorial="table" style={{ overflowX:"auto", position:"relative", zIndex:highlight("table") ? 10050 : 1, boxShadow:highlight("table") ? `0 0 0 2px ${C.green}, 0 0 22px ${C.green}66` : "none", animation:highlight("table") ? "pulse 1.6s infinite" : "none" }}>
           <div style={{ padding:"12px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ fontSize:12, color:C.muted }}>Mostrando {visibleRows.length} de {sorted.length} filas filtradas</div>
             <div style={{ fontSize:12, color:C.muted }}>Ocultas: {hiddenRows.length}</div>
@@ -1875,7 +2211,7 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
           </table>
         </Card>
 
-        <Card style={{ padding:14, position:"sticky", top:14 }}>
+        <Card data-tutorial="side" style={{ padding:14, position:"sticky", top:14, zIndex:highlight("side") ? 10050 : 1, boxShadow:highlight("side") ? `0 0 0 2px ${C.yellow}, 0 0 22px ${C.yellow}66` : "none", animation:highlight("side") ? "pulse 1.6s infinite" : "none" }}>
           <div style={{ fontSize:12, fontWeight:800, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>Ocultar / mostrar filas</div>
           <div style={{ fontSize:12, color:C.muted, marginBottom:12 }}>Usa esta lista para esconder registros individuales y comparar sin ruido.</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8, maxHeight:540, overflowY:"auto" }}>
@@ -1897,6 +2233,16 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
           </div>
         </Card>
       </div>
+
+      {tutorialActive && (
+        <CinematicGuideOverlay
+          step={currentTutorial}
+          total={datasetTutorial.length}
+          accent={C.cyan}
+          onNext={nextTutorialStep}
+          onSkip={skipTutorial}
+        />
+      )}
     </div>
   );
 }

@@ -361,9 +361,10 @@ function Btn({ children, onClick, variant="primary", size="md", disabled=false, 
   );
 }
 
-function Card({ children, style={}, glow=null, onClick=null }) {
+function Card({ children, style={}, glow=null, onClick=null, ...rest }) {
   return (
     <div onClick={onClick}
+      {...rest}
       style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16,
         ...(glow?{boxShadow:`0 0 30px ${glow}25`}:{}),
         ...(onClick?{cursor:"pointer"}:{}), ...style }}>
