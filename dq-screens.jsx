@@ -673,6 +673,77 @@ function QuizScreen({ onComplete }) {
 // ═══════════════════════════════════════════
 // MISSION SCREEN — PHASE 3
 // ═══════════════════════════════════════════
+function getMissionContext(mission) {
+  switch (mission?.id) {
+    case 1:
+      return {
+        label: "Contexto del caso",
+        body: "Tawsito está revisando qué país se repite más en el ranking porque quiere entender dónde se concentra la atención global del público. La clave aquí es ver la moda de la lista, no solo un valor aislado.",
+        hint: "Fíjate en la frecuencia con la que aparece cada país: si uno domina varias posiciones, ahí suele estar la respuesta.",
+      };
+    case 2:
+      return {
+        label: "Contexto del caso",
+        body: "En esta misión Tawsito quiere medir la brecha real entre el líder y el último lugar visible para entender cuánto se separa la cima del resto. No se trata de saber quién gana, sino cuánto margen hay entre extremos.",
+        hint: "Compara los valores más altos y más bajos de la tabla: el rango cuenta más que la posición en sí.",
+      };
+    case 3:
+      return {
+        label: "Contexto del caso",
+        body: "Aquí el sospechoso es un canal que convierte muy pocas publicaciones en una montaña de vistas. Eso apunta a una relación rara entre esfuerzo de producción y alcance, algo perfecto para leer con ciencia de datos.",
+        hint: "Busca combinaciones extrañas entre vistas y número de videos; un punto muy separado del resto suele delatar al intruso.",
+      };
+    case 4:
+      return {
+        label: "Contexto del caso",
+        body: "Tawsito sospecha que la comunidad más fiel no siempre coincide con el canal más grande. Por eso quiere mirar quién recibe más aprobación relativa, no solo quién tiene más suscriptores.",
+        hint: "La pista está en comparar porcentajes, no volumen bruto; una audiencia pequeña pero muy comprometida puede destacar más.",
+      };
+    case 5:
+      return {
+        label: "Contexto del caso",
+        body: "Esta misión nace de una duda clásica: ¿más publicaciones significan más ingresos o solo más ruido? La idea es comprobar si existe una relación real entre ambas variables antes de creer el mito.",
+        hint: "Piensa en la forma de la nube de puntos: si los datos se dispersan mucho, la relación entre variables es débil.",
+      };
+    case 6:
+      return {
+        label: "Contexto del caso",
+        body: "Tawsito quiere abrir un canal nuevo donde el público esté más hambriento de contenido. Aquí importa detectar qué categoría concentra más interés promedio por canal, aunque no tenga la mayor cantidad total de creadores.",
+        hint: "Mira promedios por categoría: una audiencia intensa en un nicho pequeño puede ser más valiosa que un mercado saturado.",
+      };
+    case 7:
+      return {
+        label: "Contexto del caso",
+        body: "Los canales más extremos pueden distorsionar la historia completa. En esta misión, Tawsito quiere quitar a los gigantes para estimar qué ingreso representa mejor al creador típico y evitar que el promedio engañe.",
+        hint: "Cuando eliminas valores atípicos, el centro de la distribución suele cambiar bastante; ahí aparece el número más representativo.",
+      };
+    case 8:
+      return {
+        label: "Contexto del caso",
+        body: "Aquí buscas una contradicción famosa: canales enormes que, aun así, generan poco ingreso mensual. Es una buena forma de mostrar que tamaño de audiencia y rentabilidad no siempre se alinean.",
+        hint: "Cruza suscriptores con ingresos mensuales; un canal grande que cae al fondo de la segunda métrica suele llamar la atención.",
+      };
+    case 9:
+      return {
+        label: "Contexto del caso",
+        body: "Un patrocinador quiere apostar por el país donde la comunidad responde mejor. La historia no va de volumen total, sino de calidad de reacción: qué país deja una huella más positiva en promedio.",
+        hint: "Agrupar por país y comparar Likes % te permite ver dónde la audiencia reacciona con más entusiasmo.",
+      };
+    case 10:
+      return {
+        label: "Contexto del caso",
+        body: "Tawsito quiere saber si la riqueza de YouTube está repartida o concentrada. El foco está en entender si un solo país domina la mitad del pastel o si los ingresos están más distribuidos.",
+        hint: "Un gráfico circular o acumulado ayuda a ver cuándo una región se lleva casi todo el peso del total.",
+      };
+    default:
+      return {
+        label: "Contexto del caso",
+        body: mission?.problem || "Lee el problema para identificar qué patrón o métrica conviene observar primero.",
+        hint: mission?.feedback || "Piensa qué variable explica mejor el comportamiento descrito.",
+      };
+  }
+}
+
 function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialProgress=null, onMissionProgress, onProgress }) {
   const [missionIdx, setMissionIdx] = useState(initialProgress?.missionIdx ?? initialMissionIdx);
   const [showQuestion, setShowQuestion] = useState(initialProgress?.showQuestion ?? false);
@@ -682,6 +753,7 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
   const [finished, setFinished] = useState(initialProgress?.finished ?? false);
 
   const mission = MISSION_CHALLENGES[missionIdx];
+  const missionContext = getMissionContext(mission);
 
   useEffect(() => {
     setMissionIdx(initialProgress?.missionIdx ?? (initialMissionIdx || 0));
@@ -785,12 +857,19 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
       <Card className="fade-in" style={{ padding:28 }} glow={C.green}>
         <div style={{ fontSize:11, color:C.muted, fontWeight:700, letterSpacing:1, textTransform:"uppercase", marginBottom:12 }}>Problema de negocio</div>
         <div style={{ display:"grid", gap:14 }}>
-          <div style={{ padding:16, borderRadius:14, background:`${C.green}10`, border:`1px solid ${C.green}30` }}>
+          <div style={{ padding:18, borderRadius:14, background:`linear-gradient(180deg, ${C.green}16, rgba(255,255,255,0.03))`, border:`1px solid ${C.green}35`, boxShadow:`0 12px 30px rgba(0,0,0,0.18)` }}>
             <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
               <span style={{ fontSize:20 }}>🧩</span>
               <h2 style={{ fontSize:20, fontWeight:800, lineHeight:1.3 }}>{mission.title}</h2>
             </div>
-            <div style={{ color:C.muted, fontSize:14, lineHeight:1.6 }}>{mission.problem}</div>
+            <div style={{ color:C.text, fontSize:15, lineHeight:1.75, fontWeight:500 }}>{mission.problem}</div>
+            <div style={{ marginTop:14, padding:16, borderRadius:12, background:"linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04))", border:`1px solid ${C.green}42`, color:C.text, fontSize:15, lineHeight:1.7, boxShadow:"0 10px 24px rgba(0,0,0,0.16)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                <span style={{ color:C.green, fontWeight:900, letterSpacing:0.3 }}>{missionContext.label}</span>
+              </div>
+              <div style={{ fontSize:16, fontWeight:600 }}>{missionContext.body}</div>
+              <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid rgba(255,255,255,0.10)`, color:"rgba(255,255,255,0.88)", fontStyle:"italic" }}>{missionContext.hint}</div>
+            </div>
           </div>
 
           {!showQuestion ? (
