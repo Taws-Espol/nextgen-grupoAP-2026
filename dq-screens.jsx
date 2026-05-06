@@ -2020,129 +2020,326 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
 // PITCH BUILDER
 // ═══════════════════════════════════════════
 function PitchBuilderScreen({ team, onComplete }) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [slides, setSlides] = useState([
-    { title:"Título", fields:{ titulo:team.name+" presenta:", subtitulo:"Análisis de canales de YouTube · WiDS 2026" }},
-    { title:"Pregunta", fields:{ pregunta:"", contexto:"" }},
-    { title:"Hallazgo principal", fields:{ hallazgo:"", evidencia:"" }},
-    { title:"¿Por qué importa?", fields:{ importancia:"", impacto:"" }},
-    { title:"Recomendación", fields:{ recomendacion:"", conclusion:"" }},
-  ]);
-  const [presenting, setPresenting] = useState(false);
+  const members = ((team?.members || []).concat(["", "", "", ""])).slice(0, 4);
+  const mCount = members.filter(m => m && m.trim()).length || 4;
+  const memberName = (i) => members[i]?.trim() || `Integrante ${i + 1}`;
 
-  const updateField = (field, val) => {
-    setSlides(prev => prev.map((s,i)=>i===currentSlide?{...s, fields:{...s.fields,[field]:val}}:s));
-  };
-
-  const slideColors = [C.purple, C.cyan, C.green, C.yellow, C.red];
-  const slideIcons = ["📋","❓","💡","🌍","🚀"];
-
-  const formFields = [
-    [{ k:"titulo", label:"Título de la presentación", ph:"Ej: Los secretos del algoritmo de YouTube" },
-     { k:"subtitulo", label:"Subtítulo / Equipo", ph:"Tu equipo · WiDS 2026" }],
-    [{ k:"pregunta", label:"¿Cuál fue su pregunta de investigación?", ph:"Ej: ¿Los canales con más suscriptores generan más ingresos?" },
-     { k:"contexto", label:"Contexto del dataset", ph:"Ej: Analizamos 15 canales de YouTube con datos de suscriptores, vistas, ingresos..." }],
-    [{ k:"hallazgo", label:"¿Qué descubrieron? (el hallazgo más sorprendente)", ph:"Ej: Los canales infantiles generan 3x más ingresos que los de gaming a pesar de tener menos suscriptores" },
-     { k:"evidencia", label:"¿Qué gráfico lo demuestra?", ph:"Describe el gráfico que generaron..." }],
-    [{ k:"importancia", label:"¿Por qué es importante este hallazgo?", ph:"Ej: Los creadores de contenido deberían considerar diversificar hacia contenido familiar" },
-     { k:"impacto", label:"¿A quién le sirve saber esto?", ph:"Ej: Creadores de contenido, marcas, plataformas de streaming" }],
-    [{ k:"recomendacion", label:"Su recomendación principal", ph:"Ej: Si quieres maximizar ingresos, el contenido familiar y educativo supera al de entretenimiento puro" },
-     { k:"conclusion", label:"Reflexión final", ph:"¿Qué aprendieron del análisis de datos?" }],
+  const SLIDE_DEFS = [
+    { title:"Portada del equipo",  icon:"📋", color:C.purple,
+      fields:[
+        { k:"titulo",    label:"Título de su análisis",       ph:`Ej: \"Los secretos del algoritmo de TawsTube\"` },
+        { k:"subtitulo", label:"Integrantes y fecha",         ph:`${team?.name || "Tu equipo"} · WiDS 2026` },
+      ]},
+    { title:"Pregunta de investigación", icon:"❓", color:C.cyan,
+      fields:[
+        { k:"pregunta",  label:"¿Qué pregunta intentaron responder?", ph:"Ej: ¿Los canales con más subs generan más ingresos?" },
+        { k:"contexto",  label:"¿Qué datos usaron?",                  ph:"Ej: 15 canales de YouTube con datos de subs, vistas, ingresos..." },
+      ]},
+    { title:"Hallazgo principal", icon:"💡", color:C.green,
+      fields:[
+        { k:"hallazgo",  label:"¿Qué descubrieron? (lo más sorprendente)", ph:"Ej: Los canales infantiles generan 3× más ingresos que gaming" },
+        { k:"evidencia", label:"¿Qué gráfico o correlación lo demuestra?", ph:"Ej: El scatter plot de subs vs. ingresos mostró que..." },
+      ]},
+    { title:"¿Por qué importa?", icon:"🌍", color:C.yellow,
+      fields:[
+        { k:"importancia", label:"¿Por qué es útil este hallazgo?",  ph:"Ej: Los creadores deberían diversificar hacia contenido familiar" },
+        { k:"audiencia",   label:"¿A quién le sirve saber esto?",    ph:"Ej: Creadores, marcas, plataformas de streaming" },
+      ]},
+    { title:"Recomendación a Tawsito", icon:"🚀", color:C.pink,
+      fields:[
+        { k:"recomendacion", label:"Su consejo principal para la IA", ph:"Ej: Priorizar canales Kids y Educación en el algoritmo" },
+        { k:"reflexion",     label:"¿Qué aprendió el equipo?",        ph:"Ej: Aprendimos que correlación no es causalidad..." },
+      ]},
   ];
 
+  const [step, setStep]           = useState(0);
+  const [slideIdx, setSlideIdx]   = useState(0);
+  const [slides, setSlides]       = useState(SLIDE_DEFS.map(s => ({ ...s, values: Object.fromEntries(s.fields.map(f=>[f.k,""])) })));
+  const [approvals, setApprovals] = useState({});
+  const [presenting, setPres]     = useState(false);
+  const [presSlide, setPresSlide] = useState(0);
+  const [xpAmount, setXpAmount]   = useState(null);
+
+  const slideColors = SLIDE_DEFS.map(s => s.color);
+  const memberForSlide = (i) => i % mCount;
+  const updateField = (k, v) => setSlides(prev => prev.map((s,i) => i===slideIdx ? { ...s, values:{ ...s.values, [k]:v } } : s));
+  const currentSlide = slides[slideIdx];
+  const allApproved = Object.keys(approvals).length >= mCount;
+  const slidesDone = slides.filter(s => Object.values(s.values).every(v => v.trim())).length;
+
+  const giveXP = (amt) => { setXpAmount(amt); };
+
   if (presenting) return (
-    <div style={{ position:"fixed", inset:0, background:C.bg, display:"flex", flexDirection:"column", zIndex:100 }}>
-      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:40,
-        background:`radial-gradient(ellipse at center, ${slideColors[currentSlide]}15, transparent 70%)` }}>
-        <div style={{ maxWidth:800, width:"100%", textAlign:"center" }}>
-          <div style={{ fontSize:80, marginBottom:24 }}>{slideIcons[currentSlide]}</div>
-          <div style={{ fontSize:13, color:slideColors[currentSlide], fontWeight:700, letterSpacing:2, textTransform:"uppercase", marginBottom:16 }}>{slides[currentSlide].title}</div>
-          {Object.values(slides[currentSlide].fields).filter(v=>v).map((v,i)=>(
-            <p key={i} style={{ fontSize:i===0?32:18, fontWeight:i===0?800:400, color:i===0?C.text:C.muted, marginBottom:12, lineHeight:1.5 }}>{v}</p>
+    <div style={{ position:"fixed", inset:0, background:C.bg, display:"flex", flexDirection:"column", zIndex:100,
+      backgroundImage:`radial-gradient(ellipse at center, ${slideColors[presSlide]}18, transparent 65%)` }}>
+      <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", padding:"32px 48px" }}>
+        <div className="fade-in" style={{ maxWidth:760, width:"100%", textAlign:"center" }}>
+          <div style={{ fontSize:72, marginBottom:20 }}>{SLIDE_DEFS[presSlide].icon}</div>
+          <div style={{ fontSize:12, color:slideColors[presSlide], fontWeight:800, letterSpacing:2, textTransform:"uppercase", marginBottom:14 }}>
+            Slide {presSlide+1} — {SLIDE_DEFS[presSlide].title}
+          </div>
+          {Object.values(slides[presSlide].values).filter(v=>v).map((v,i)=>(
+            <p key={i} style={{ fontSize:i===0?26:16, fontWeight:i===0?800:400, color:i===0?C.text:C.muted, marginBottom:10, lineHeight:1.6 }}>{v}</p>
           ))}
+          {!Object.values(slides[presSlide].values).some(v=>v) && (
+            <p style={{ color:C.dim, fontStyle:"italic", fontSize:15 }}>— slide vacío —</p>
+          )}
         </div>
       </div>
-      <div style={{ padding:"16px 32px", background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <Btn onClick={()=>setCurrentSlide(p=>Math.max(0,p-1))} variant="secondary" disabled={currentSlide===0}>← Anterior</Btn>
+      <div style={{ padding:"14px 28px", background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <Btn onClick={()=>setPresSlide(p=>Math.max(0,p-1))} variant="secondary" disabled={presSlide===0}>← Anterior</Btn>
         <div style={{ display:"flex", gap:8 }}>
-          {slides.map((_,i)=>(
-            <div key={i} onClick={()=>setCurrentSlide(i)} style={{ width:10, height:10, borderRadius:"50%", background:i===currentSlide?slideColors[i]:"rgba(255,255,255,0.15)", cursor:"pointer", transition:"all 0.2s" }}/>
+          {SLIDE_DEFS.map((_,i)=>(
+            <div key={i} onClick={()=>setPresSlide(i)} style={{ width:10, height:10, borderRadius:"50%",
+              background:i===presSlide?slideColors[i]:"rgba(255,255,255,0.15)", cursor:"pointer", transition:"all 0.2s" }}/>
           ))}
         </div>
-        {currentSlide<slides.length-1
-          ? <Btn onClick={()=>setCurrentSlide(p=>p+1)} variant="cyan">Siguiente →</Btn>
-          : <Btn onClick={()=>{ setPresenting(false); onComplete&&onComplete(250); }} variant="success">Finalizar pitch ✓</Btn>
+        {presSlide < SLIDE_DEFS.length-1
+          ? <Btn onClick={()=>setPresSlide(p=>p+1)} variant="cyan">Siguiente →</Btn>
+          : <Btn onClick={()=>{ setPres(false); if(step>=3) { onComplete&&onComplete(300); } }} variant="success">
+              {step>=3 ? "Finalizar presentación ✓" : "Cerrar vista previa"}
+            </Btn>
         }
-        <button onClick={()=>setPresenting(false)} style={{ position:"fixed", top:16, right:16, border:"none", background:"rgba(255,255,255,0.1)", borderRadius:8, color:C.muted, padding:"6px 12px", cursor:"pointer", fontSize:13 }}>Salir ×</button>
       </div>
+      <button onClick={()=>setPres(false)}
+        style={{ position:"fixed", top:14, right:14, border:"none", background:"rgba(255,255,255,0.1)", borderRadius:8, color:C.muted, padding:"6px 14px", cursor:"pointer", fontSize:13, fontWeight:700 }}>
+        ✕ Salir
+      </button>
     </div>
   );
 
-  return (
-    <div style={{ padding:24, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div>
-          <Chip label="Fase 4 · Pitch Builder" color={C.yellow}/>
-          <h1 style={{ fontSize:24, fontWeight:800, marginTop:6 }}>🎤 Construye tu pitch</h1>
-        </div>
-        <Btn onClick={()=>setPresenting(true)} variant="success">▶ Vista de presentación</Btn>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1.6fr", gap:20, flex:1 }}>
-        {/* Slide navigator */}
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {slides.map((s,i)=>(
-            <div key={i} onClick={()=>setCurrentSlide(i)}
-              style={{ padding:"14px 16px", borderRadius:12, cursor:"pointer",
-                background:currentSlide===i?`${slideColors[i]}15`:C.card,
-                border:`1px solid ${currentSlide===i?slideColors[i]:C.border}`,
-                display:"flex", alignItems:"center", gap:12, transition:"all 0.2s" }}>
-              <div style={{ width:36, height:36, borderRadius:8, background:`${slideColors[i]}20`,
-                display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{slideIcons[i]}</div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:14, color:currentSlide===i?slideColors[i]:C.text }}>Slide {i+1}: {s.title}</div>
-                <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>
-                  {Object.values(s.fields).filter(v=>v).length}/{Object.values(s.fields).length} campos completos
-                </div>
-              </div>
-              <div style={{ marginLeft:"auto", width:8, height:8, borderRadius:"50%",
-                background:Object.values(s.fields).every(v=>v)?C.green:"rgba(255,255,255,0.15)" }}/>
-            </div>
-          ))}
-          <div style={{ marginTop:8 }}>
-            <Btn onClick={()=>onComplete&&onComplete(250)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
-              Completar pitch +250 XP ⚡
-            </Btn>
-          </div>
-        </div>
-
-        {/* Editor */}
-        <Card style={{ padding:24 }} glow={slideColors[currentSlide]}>
-          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
-            <span style={{ fontSize:28 }}>{slideIcons[currentSlide]}</span>
+  if (step === 0) return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      {xpAmount && <XPPop amount={xpAmount} onDone={()=>setXpAmount(null)} />}
+      <div className="fade-in" style={{ maxWidth:640, width:"100%" }}>
+        <Card style={{ padding:32 }} glow={C.pink}>
+          <div style={{ display:"flex", gap:16, alignItems:"flex-start", marginBottom:22 }}>
+            <div style={{ fontSize:52, lineHeight:1, flexShrink:0 }}>🎤</div>
             <div>
-              <div style={{ fontSize:11, color:slideColors[currentSlide], fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>Slide {currentSlide+1}</div>
-              <h2 style={{ fontSize:20, fontWeight:800 }}>{slides[currentSlide].title}</h2>
+              <Chip label="Fase 5 · Presentar Hallazgos" color={C.pink} />
+              <h1 style={{ fontSize:26, fontWeight:900, margin:"8px 0" }}>Tawsito quiere escuchar su pitch</h1>
+              <div style={{ background:`${C.pink}12`, border:`1px solid ${C.pink}30`, borderRadius:12, padding:14, marginTop:8 }}>
+                <p style={{ color:C.text, fontSize:14, lineHeight:1.7, margin:0 }}>
+                  "¡Lo lograron, equipo! 🎉 Analizaron los datos, encontraron correlaciones y descubrieron patrones increíbles.
+                  Ahora necesito que me presenten sus hallazgos en 5 slides para que yo pueda aprender de verdad.
+                  ¡Cada integrante tendrá su momento de protagonismo! 🚀"
+                </p>
+              </div>
             </div>
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-            {formFields[currentSlide].map(f=>(
-              <div key={f.k}>
-                <label style={{ fontSize:12, fontWeight:700, color:C.muted, display:"block", marginBottom:6 }}>{f.label}</label>
-                <textarea value={slides[currentSlide].fields[f.k]||""} onChange={e=>updateField(f.k,e.target.value)}
-                  placeholder={f.ph} rows={3}
-                  style={{ resize:"none", fontSize:14, padding:"12px 14px", borderRadius:10, width:"100%" }}/>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:22 }}>
+            {SLIDE_DEFS.map((s,i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px",
+                background:`${s.color}10`, border:`1px solid ${s.color}25`, borderRadius:10 }}>
+                <span style={{ fontSize:20 }}>{s.icon}</span>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:12, color:s.color }}>Slide {i+1}</div>
+                  <div style={{ fontSize:12, color:C.muted }}>{s.title}</div>
+                </div>
+                <div style={{ marginLeft:"auto", fontSize:11, color:C.dim }}>{memberName(memberForSlide(i))}</div>
               </div>
             ))}
           </div>
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:20 }}>
-            <Btn onClick={()=>setCurrentSlide(p=>Math.max(0,p-1))} variant="ghost" disabled={currentSlide===0}>← Anterior</Btn>
-            <Btn onClick={()=>setCurrentSlide(p=>Math.min(slides.length-1,p+1))} disabled={currentSlide===slides.length-1}>Siguiente →</Btn>
-          </div>
+
+          <Btn onClick={() => setStep(1)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
+            ¡Construir presentación! 🎤 →
+          </Btn>
         </Card>
       </div>
     </div>
   );
+
+  if (step === 1) {
+    const assignedMember = memberForSlide(slideIdx);
+    const canAdvance = Object.values(currentSlide.values).every(v => v.trim().length >= 3);
+
+    return (
+      <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
+        {xpAmount && <XPPop amount={xpAmount} onDone={()=>setXpAmount(null)} />}
+
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          {SLIDE_DEFS.map((s,i) => {
+            const done = Object.values(slides[i].values).every(v=>v.trim().length>=3);
+            const isCur = i === slideIdx;
+            return (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <div style={{ width:isCur?36:28, height:28, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center",
+                  background:done?`${s.color}30`:isCur?`${s.color}20`:"rgba(255,255,255,0.05)",
+                  border:`2px solid ${done||isCur?s.color:C.border}`,
+                  fontSize:isCur?14:12, transition:"all 0.2s" }}>
+                  {done ? <span style={{ color:s.color }}>✓</span> : <span style={{ color:isCur?s.color:C.dim }}>{i+1}</span>}
+                </div>
+                {i < SLIDE_DEFS.length-1 && <div style={{ width:20, height:2, background:done?`${s.color}50`:C.border, borderRadius:1 }}/>} 
+              </div>
+            );
+          })}
+          <div style={{ marginLeft:"auto", fontSize:12, color:C.muted }}>{slidesDone}/5 completos</div>
+        </div>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, background:`${SLIDE_DEFS[slideIdx].color}15`,
+          border:`1px solid ${SLIDE_DEFS[slideIdx].color}35`, borderRadius:12, padding:"10px 16px", alignSelf:"flex-start" }}>
+          <span style={{ fontSize:20 }}>👤</span>
+          <div>
+            <div style={{ fontSize:11, color:SLIDE_DEFS[slideIdx].color, fontWeight:700 }}>Turno de</div>
+            <div style={{ fontWeight:800, fontSize:15 }}>{memberName(assignedMember)}</div>
+          </div>
+          <div style={{ marginLeft:12, padding:"4px 10px", background:`${SLIDE_DEFS[slideIdx].color}20`, borderRadius:6, fontSize:11, color:SLIDE_DEFS[slideIdx].color, fontWeight:700 }}>
+            {SLIDE_DEFS[slideIdx].icon} Slide {slideIdx+1}
+          </div>
+        </div>
+
+        <Card style={{ padding:28 }} glow={SLIDE_DEFS[slideIdx].color}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:22 }}>
+            <div style={{ width:48, height:48, borderRadius:12, background:`${SLIDE_DEFS[slideIdx].color}20`,
+              display:"flex", alignItems:"center", justifyContent:"center", fontSize:24, flexShrink:0 }}>
+              {SLIDE_DEFS[slideIdx].icon}
+            </div>
+            <div>
+              <div style={{ fontSize:11, color:SLIDE_DEFS[slideIdx].color, fontWeight:800, letterSpacing:1, textTransform:"uppercase" }}>Slide {slideIdx+1}</div>
+              <h2 style={{ fontSize:20, fontWeight:800, margin:0 }}>{SLIDE_DEFS[slideIdx].title}</h2>
+            </div>
+          </div>
+
+          <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+            {currentSlide.fields.map(f => (
+              <div key={f.k}>
+                <label style={{ fontSize:12, fontWeight:700, color:C.muted, display:"block", marginBottom:6 }}>{f.label}</label>
+                <textarea
+                  value={currentSlide.values[f.k] || ""}
+                  onChange={e => updateField(f.k, e.target.value)}
+                  placeholder={f.ph}
+                  rows={3}
+                  style={{ resize:"none", fontSize:14, padding:"12px 14px", borderRadius:10, width:"100%", boxSizing:"border-box",
+                    background:C.surface, border:`1px solid ${C.border}`, color:C.text, fontFamily:"Space Grotesk,sans-serif" }}
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <div style={{ display:"flex", gap:10 }}>
+          {slideIdx > 0 && (
+            <Btn onClick={() => setSlideIdx(i=>i-1)} variant="secondary">← Slide anterior</Btn>
+          )}
+          {slideIdx < SLIDE_DEFS.length-1 ? (
+            <Btn onClick={() => { if(canAdvance){ giveXP(40); setSlideIdx(i=>i+1); } }} disabled={!canAdvance}
+              variant="primary" style={{ marginLeft:"auto" }}>
+              Guardar slide y continuar →
+            </Btn>
+          ) : (
+            <Btn onClick={() => { if(canAdvance){ giveXP(40); setStep(2); } }} disabled={!canAdvance}
+              variant="success" size="lg" style={{ marginLeft:"auto" }}>
+              ¡Slides listos! → Revisión del equipo 👀
+            </Btn>
+          )}
+        </div>
+
+        {!canAdvance && (
+          <p style={{ color:C.dim, fontSize:12, textAlign:"center" }}>Completa ambos campos para continuar (mínimo 3 caracteres cada uno).</p>
+        )}
+      </div>
+    );
+  }
+
+  if (step === 2) return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
+      {xpAmount && <XPPop amount={xpAmount} onDone={()=>setXpAmount(null)} />}
+      <div>
+        <Chip label="Fase 5 · Revisión grupal" color={C.pink} />
+        <h2 style={{ fontSize:22, fontWeight:800, margin:"8px 0 4px" }}>Revisen la presentación juntos</h2>
+        <p style={{ color:C.muted, fontSize:14, margin:0 }}>Antes de aprobar, vean cómo quedó cada slide.</p>
+      </div>
+
+      <Btn onClick={() => { setPresSlide(0); setPres(true); }} variant="success" size="lg" style={{ alignSelf:"flex-start" }}>
+        ▶ Ver presentación completa
+      </Btn>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {slides.map((s,i) => (
+          <Card key={i} style={{ padding:16 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:40, height:40, borderRadius:10, background:`${slideColors[i]}20`,
+                display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
+                {SLIDE_DEFS[i].icon}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:12, color:slideColors[i], fontWeight:700 }}>Slide {i+1} · {memberName(memberForSlide(i))}</div>
+                <div style={{ fontWeight:700, fontSize:14 }}>{SLIDE_DEFS[i].title}</div>
+                <div style={{ fontSize:12, color:C.muted, marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  {Object.values(s.values).filter(v=>v)[0] || "— vacío —"}
+                </div>
+              </div>
+              <Btn onClick={() => { setSlideIdx(i); setStep(1); }} variant="ghost" size="sm">Editar</Btn>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <Btn onClick={() => setStep(3)} variant="primary" size="lg" style={{ justifyContent:"center" }}>
+        Todo se ve bien → Aprobación del equipo ✅
+      </Btn>
+    </div>
+  );
+
+  if (step === 3) return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
+      {xpAmount && <XPPop amount={xpAmount} onDone={()=>setXpAmount(null)} />}
+      <div>
+        <Chip label="Fase 5 · Aprobación final" color={C.pink} />
+        <h2 style={{ fontSize:22, fontWeight:800, margin:"8px 0 4px" }}>¿El equipo aprueba la presentación?</h2>
+        <p style={{ color:C.muted, fontSize:14, margin:0 }}>Cada integrante debe dar su OK antes de presentarle a Tawsito.</p>
+      </div>
+
+      <div style={{ padding:14, background:`${C.pink}10`, border:`1px solid ${C.pink}30`, borderRadius:12, display:"flex", gap:10 }}>
+        <span style={{ fontSize:20 }}>🤖</span>
+        <span style={{ fontSize:13, color:C.muted, lineHeight:1.6 }}>
+          <strong style={{ color:C.pink }}>Tawsito:</strong> "¡Necesito que todos estén convencidos del análisis antes de entrenar mi IA con esos datos! La validación del equipo es parte del proceso científico. 🔬"
+        </span>
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        {[0,1,2,3].map(i => {
+          if (i >= mCount) return null;
+          const approved = approvals[i];
+          return (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 16px",
+              borderRadius:12, background:approved?`${C.green}12`:"rgba(255,255,255,0.03)",
+              border:`1px solid ${approved?C.green:C.border}`, transition:"all 0.3s" }}>
+              <div>
+                <div style={{ fontWeight:700, fontSize:14, color:approved?C.green:C.text }}>{memberName(i)}</div>
+                <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>{approved?"✓ Aprobó la presentación":"Esperando aprobación..."}</div>
+              </div>
+              <button onClick={() => { if(!approved){ setApprovals(p=>({...p,[i]:true})); giveXP(30); } }}
+                disabled={approved}
+                style={{ border:"none", borderRadius:8, cursor:approved?"default":"pointer",
+                  padding:"8px 16px", background:approved?`${C.green}25`:C.purple,
+                  color:approved?C.green:"#fff", fontWeight:700, fontSize:13, transition:"all 0.2s" }}>
+                {approved ? "✓ Aprobado" : "Yo apruebo"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {allApproved && (
+        <Card style={{ padding:20, background:`linear-gradient(135deg,${C.pink}15,${C.purple}15)`, border:`1px solid ${C.pink}` }} glow={C.pink}>
+          <div style={{ textAlign:"center", marginBottom:16 }}>
+            <div style={{ fontSize:40, marginBottom:8 }}>🎉</div>
+            <div style={{ fontWeight:800, fontSize:18, color:C.pink }}>¡El equipo aprobó! Tawsito está listo para aprender.</div>
+          </div>
+          <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
+            <Btn onClick={() => { setPresSlide(0); setPres(true); }} variant="secondary">▶ Ver presentación final</Btn>
+            <Btn onClick={() => { onComplete&&onComplete(300); }} variant="success" size="lg">
+              Completar Fase 5 +300 XP ⚡
+            </Btn>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+
+  return null;
 }
 
 // ═══════════════════════════════════════════
@@ -2541,6 +2738,14 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                     <Btn variant="primary" onClick={() => onNav("analysis")}> 
                       🕵️ Misiones libres
                     </Btn>
+                  ) : phase.id === 4 ? (
+                    <Btn variant="primary" onClick={() => onNav("correlaciones") }>
+                      📈 Correlaciones
+                    </Btn>
+                  ) : phase.id === 5 ? (
+                    <Btn variant="primary" onClick={() => onNav("pitch") }>
+                      🎤 Pitch Builder
+                    </Btn>
                   ) : (
                     <Btn variant="primary" onClick={() => onNav("graficos")}>
                       📈 GRAFICOS
@@ -2567,6 +2772,14 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                   ) : phase.id === 3 ? (
                     <Btn variant="secondary" onClick={() => onNav("analysis")}>
                       🕵️ Revisar Misiones
+                    </Btn>
+                  ) : phase.id === 4 ? (
+                    <Btn variant="secondary" onClick={() => onNav("correlaciones") }>
+                      📈 Revisar Correlaciones
+                    </Btn>
+                  ) : phase.id === 5 ? (
+                    <Btn variant="secondary" onClick={() => onNav("pitch") }>
+                      🎤 Revisar Pitch
                     </Btn>
                   ) : (
                     <Btn variant="secondary" onClick={() => onNav("graficos")}>
@@ -3002,5 +3215,6 @@ function AdminTeamsScreen({ teams }) {
 Object.assign(window, {
   MapaScreen, DatasetsScreen,
   LoreScreen, LoginScreen, ChartEditorScreen,
-  QuizScreen, AdminLeaderboardScreen, AdminTeamsScreen,
+  QuizScreen, CorrelacionesScreen, PitchBuilderScreen,
+  AdminLeaderboardScreen, AdminTeamsScreen,
 });

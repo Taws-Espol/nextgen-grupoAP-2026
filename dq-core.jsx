@@ -630,7 +630,7 @@ function Sidebar({ screen, onNav }) {
 }
 
 function TopBar({ team, screen, onLogout }) {
-  const labels = { datasets:"DATASETS", mapa:"MAPA DE PROGRESO", graficos:"GRAFICOS", analysis:"MISIÓN 3", pitch:"PITCH BUILDER", leaderboard:"LEADERBOARD", lesson:"LECCIÓN" };
+  const labels = { datasets:"DATASETS", mapa:"MAPA DE PROGRESO", graficos:"GRAFICOS", analysis:"MISIÓN 3", correlaciones:"CORRELACIONES", pitch:"PITCH BUILDER", leaderboard:"LEADERBOARD", lesson:"LECCIÓN" };
   const moduleLabel = labels[screen] || "MAPA";
   return (
     <div style={{ height:54, background:C.surface, borderBottom:`1px solid ${C.border}`,

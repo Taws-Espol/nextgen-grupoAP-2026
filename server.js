@@ -9,7 +9,7 @@ const PORT = 3000;
 const server = http.createServer((req, res) => {
   // Serve static files
   let filePath = "." + req.url;
-  if (filePath === "./") filePath = "./index.html";
+  if (filePath === "./") filePath = "./DataQuest WiDS.html";
   
   const extname = String(path.extname(filePath)).toLowerCase();
   const mimeTypes = {
