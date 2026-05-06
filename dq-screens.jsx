@@ -891,28 +891,53 @@ function FeedbackToast({ type, xpGain, correctAnswer, animated }) {
 // ═══════════════════════════════════════════
 // QUIZ SCREEN
 // ═══════════════════════════════════════════
-function QuizScreen({ onComplete }) {
-  const [qIdx, setQIdx] = useState(0);
-  const [answered, setAnswered] = useState(false);
+function QuizScreen({ onComplete, initialProgress=null, onProgress }) {
+  const [qIdx, setQIdx] = useState(initialProgress?.qIdx ?? 0);
+  const [answered, setAnswered] = useState(initialProgress?.answered ?? false);
   const [showQuestion, setShowQuestion] = useState(false);
-  const [totalXP, setTotalXP] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [done, setDone] = useState(false);
+  const [totalXP, setTotalXP] = useState(initialProgress?.totalXP ?? 0);
+  const [streak, setStreak] = useState(initialProgress?.streak ?? 0);
+  const [done, setDone] = useState(initialProgress?.done ?? false);
   const [draggedCell, setDraggedCell] = useState(null);
   const [nucleusActive, setNucleusActive] = useState(false);
   const [particleTrigger, setParticleTrigger] = useState(false);
   const [particleColor, setParticleColor] = useState(null);
-  const [feedbackType, setFeedbackType] = useState(null);
-  const [electricFill, setElectricFill] = useState(0);
+  const [feedbackType, setFeedbackType] = useState(initialProgress?.feedbackType ?? null);
+  const [canContinue, setCanContinue] = useState(initialProgress?.answered ?? false);
   const nucleusWrapperRef = useRef(null);
-  const barRef = useRef(null);
 
   const q = QUIZ_QUESTIONS[qIdx];
+  const hasLoadedInitialProgressRef = useRef(false);
 
   useEffect(() => {
     const timeout = setTimeout(() => setShowQuestion(true), 300);
     return () => clearTimeout(timeout);
   }, [qIdx]);
+
+  useEffect(() => {
+    if (hasLoadedInitialProgressRef.current) return;
+    hasLoadedInitialProgressRef.current = true;
+    if (!initialProgress) return;
+
+    setQIdx(initialProgress.qIdx ?? 0);
+    setAnswered(initialProgress.answered ?? false);
+    setTotalXP(initialProgress.totalXP ?? 0);
+    setStreak(initialProgress.streak ?? 0);
+    setDone(initialProgress.done ?? false);
+    setFeedbackType(initialProgress.feedbackType ?? null);
+    setCanContinue(initialProgress.answered ?? false);
+  }, [initialProgress]);
+
+  useEffect(() => {
+    onProgress && onProgress({
+      qIdx,
+      totalXP,
+      streak,
+      answered,
+      feedbackType,
+      done,
+    });
+  }, [qIdx, totalXP, streak, answered, feedbackType, done]);
 
   const cellColors = ["#9D6EF8", "#22D3EE", "#4ADE80", "#F59E0B"];
 
@@ -967,38 +992,30 @@ function QuizScreen({ onComplete }) {
     if (answered) return;
 
     const cellIdx = parseInt(e.dataTransfer.getData("cellIndex"));
+    if (Number.isNaN(cellIdx) || cellIdx < 0 || cellIdx >= cellColors.length) {
+      setNucleusActive(false);
+      return;
+    }
     const isCorrect = cellIdx === q.ans;
 
     setAnswered(true);
     setFeedbackType(isCorrect ? "correct" : "incorrect");
     setParticleTrigger(true);
     setParticleColor(cellColors[cellIdx]);
+    setCanContinue(false);
 
     if (isCorrect) {
-      setElectricFill(0);
-      let progress = 0;
-      const fillInterval = setInterval(() => {
-        progress += 0.05;
-        setElectricFill(Math.min(progress, 1));
-        if (progress >= 1) clearInterval(fillInterval);
-      }, 60);
-
       const xpEarned = q.xp + (streak >= 2 ? 50 : 0);
       setTotalXP(p => p + xpEarned);
       setStreak(p => p + 1);
 
       playSound("correct");
-
-      setTimeout(() => {
-        next();
-      }, 1200);
     } else {
       playSound("wrong");
       setStreak(0);
-      setTimeout(() => {
-        next();
-      }, 900);
     }
+
+    setTimeout(() => setCanContinue(true), 700);
 
     setNucleusActive(false);
   };
@@ -1012,7 +1029,7 @@ function QuizScreen({ onComplete }) {
     setAnswered(false);
     setFeedbackType(null);
     setParticleTrigger(false);
-    setElectricFill(0);
+    setCanContinue(false);
     setShowQuestion(false);
   };
 
@@ -1069,26 +1086,54 @@ function QuizScreen({ onComplete }) {
         }}>
           <span>🧪 Pregunta {qIdx + 1} de {QUIZ_QUESTIONS.length}</span>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div ref={barRef} style={{ width: 320 }}>
-              <ElectricBar fillPercentage={electricFill} isAnimating={answered && feedbackType === "correct"} />
-            </div>
-            <span style={{ color: C.yellow }}>⚡ {totalXP} XP</span>
+            <span style={{ color: C.yellow, fontWeight: 800 }}>⚡ XP acumulados: {totalXP}</span>
           </div>
         </div>
 
         {/* Concept + Question */}
         <div style={{ marginBottom: 32 }}>
           <div style={{
-            background: `${C.purple}15`,
-            border: `1px solid ${C.purple}40`,
-            borderRadius: 12,
-            padding: 14,
+            background: `linear-gradient(135deg, ${C.purple}20, rgba(255,255,255,0.04))`,
+            border: `1px solid ${C.purple}66`,
+            borderRadius: 16,
+            padding: 16,
             marginBottom: 16,
-            fontSize: 13,
             color: C.text,
             lineHeight: 1.6,
+            boxShadow: `0 0 28px ${C.purple}18`,
           }}>
-            <strong style={{ color: C.purple }}>💡 Concepto:</strong> {q.conceptText}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: `${C.purple}24`,
+                border: `1px solid ${C.purple}55`,
+                boxShadow: `0 0 16px ${C.purple}20`,
+                fontSize: 18,
+              }}>💡</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  color: C.cyan,
+                }}>Concepto</div>
+                <div style={{
+                  fontSize: 22,
+                  fontWeight: 900,
+                  color: C.purple,
+                  lineHeight: 1.1,
+                }}>{q.concept}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 14, color: C.text, opacity: 0.96 }}>
+              {q.conceptText}
+            </div>
           </div>
 
           {showQuestion && (
@@ -1158,11 +1203,6 @@ function QuizScreen({ onComplete }) {
               ))}
             </div>
 
-            {/* ELECTRIC BAR */}
-            <ElectricBar
-              fillPercentage={electricFill}
-              isAnimating={answered && feedbackType === "correct"}
-            />
           </div>
         )}
 
@@ -1173,6 +1213,20 @@ function QuizScreen({ onComplete }) {
           correctAnswer={q.opts[q.ans]}
           animated={answered && feedbackType !== null}
         />
+
+        {answered && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
+            <Btn
+              variant="success"
+              size="lg"
+              onClick={next}
+              disabled={!canContinue}
+              style={{ minWidth: 240 }}
+            >
+              {canContinue ? "Siguiente pregunta →" : "Prepara la siguiente..."}
+            </Btn>
+          </div>
+        )}
 
         {/* Hint */}
         <div style={{

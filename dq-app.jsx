@@ -25,6 +25,15 @@ const DEFAULT_PHASE_THREE_PROGRESS = {
   },
 };
 
+const DEFAULT_PHASE_TWO_PROGRESS = {
+  qIdx: 0,
+  totalXP: 0,
+  streak: 0,
+  answered: false,
+  feedbackType: null,
+  done: false,
+};
+
 function cloneDefaultPhaseThreeProgress() {
   return {
     mission: { ...DEFAULT_PHASE_THREE_PROGRESS.mission },
@@ -33,10 +42,14 @@ function cloneDefaultPhaseThreeProgress() {
   };
 }
 
+function cloneDefaultPhaseTwoProgress() {
+  return { ...DEFAULT_PHASE_TWO_PROGRESS };
+}
+
 function loadSavedSession() {
   try {
     const raw = localStorage.getItem("dq_session_v1");
-    if (!raw) return { user: null, screen: "lore", phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false }, missionProgress: { missionIdx: 0 }, phaseThreeProgress: cloneDefaultPhaseThreeProgress() };
+    if (!raw) return { user: null, screen: "lore", phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false }, missionProgress: { missionIdx: 0 }, phaseTwoProgress: cloneDefaultPhaseTwoProgress(), phaseThreeProgress: cloneDefaultPhaseThreeProgress() };
 
     const parsed = JSON.parse(raw);
     return {
@@ -44,10 +57,11 @@ function loadSavedSession() {
       screen: parsed.screen || (parsed.user?.role === "participant" ? "mapa" : "lore"),
       phaseOneTutorialProgress: parsed.phaseOneTutorialProgress || { datasets: false, graficos: false, confirmed: false },
       missionProgress: parsed.missionProgress || { missionIdx: 0 },
+      phaseTwoProgress: parsed.phaseTwoProgress || cloneDefaultPhaseTwoProgress(),
       phaseThreeProgress: parsed.phaseThreeProgress || cloneDefaultPhaseThreeProgress(),
     };
   } catch {
-    return { user: null, screen: "lore", phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false }, missionProgress: { missionIdx: 0 }, phaseThreeProgress: cloneDefaultPhaseThreeProgress() };
+    return { user: null, screen: "lore", phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false }, missionProgress: { missionIdx: 0 }, phaseTwoProgress: cloneDefaultPhaseTwoProgress(), phaseThreeProgress: cloneDefaultPhaseThreeProgress() };
   }
 }
 
@@ -59,6 +73,7 @@ function App() {
   const [useLocalStorage, setUseLocalStorage] = useState(false);
   const [phaseOneTutorialProgress, setPhaseOneTutorialProgress] = useState(initialSession.phaseOneTutorialProgress);
   const [missionProgress, setMissionProgress] = useState(initialSession.missionProgress || { missionIdx: 0 });
+  const [phaseTwoProgress, setPhaseTwoProgress] = useState(initialSession.phaseTwoProgress || cloneDefaultPhaseTwoProgress());
   const [phaseThreeProgress, setPhaseThreeProgress] = useState(initialSession.phaseThreeProgress || cloneDefaultPhaseThreeProgress());
   const wsRef = useRef(null);
   const hasLoadedSessionRef = useRef(false);
@@ -71,6 +86,7 @@ function App() {
       setUser(initialSession.user);
       setPhaseOneTutorialProgress(initialSession.phaseOneTutorialProgress || { datasets: false, graficos: false, confirmed: false });
       setMissionProgress(initialSession.missionProgress || { missionIdx: 0 });
+      setPhaseTwoProgress(initialSession.phaseTwoProgress || cloneDefaultPhaseTwoProgress());
       setPhaseThreeProgress(initialSession.phaseThreeProgress || cloneDefaultPhaseThreeProgress());
     }
   }, []);
@@ -82,9 +98,10 @@ function App() {
       screen,
       phaseOneTutorialProgress,
       missionProgress,
+      phaseTwoProgress,
       phaseThreeProgress,
     }));
-  }, [user, screen, phaseOneTutorialProgress, missionProgress, phaseThreeProgress]);
+  }, [user, screen, phaseOneTutorialProgress, missionProgress, phaseTwoProgress, phaseThreeProgress]);
 
   useEffect(() => {
     if (!user) {
@@ -116,6 +133,7 @@ function App() {
     const updatedTeam = { ...user.team, phase: Math.min(5, user.team.phase + 1), xp: (user.team.xp || 0) + (xpEarned || 0) };
     syncTeamState(updatedTeam);
     setMissionProgress({ missionIdx: 0 });
+    setPhaseTwoProgress(cloneDefaultPhaseTwoProgress());
     setPhaseThreeProgress(cloneDefaultPhaseThreeProgress());
     setScreen("mapa");
   };
@@ -197,6 +215,7 @@ function App() {
     setUser({ role: "participant", team: newTeam });
     setPhaseOneTutorialProgress({ datasets: false, graficos: false, confirmed: false });
     setMissionProgress({ missionIdx: 0 });
+    setPhaseTwoProgress(cloneDefaultPhaseTwoProgress());
     setPhaseThreeProgress(cloneDefaultPhaseThreeProgress());
     
     // Guardar en localStorage como backup
@@ -208,6 +227,7 @@ function App() {
       screen: "mapa",
       phaseOneTutorialProgress: { datasets: false, graficos: false, confirmed: false },
       missionProgress: { missionIdx: 0 },
+      phaseTwoProgress: cloneDefaultPhaseTwoProgress(),
       phaseThreeProgress: cloneDefaultPhaseThreeProgress(),
     }));
     
@@ -292,7 +312,11 @@ function App() {
           );
         case "quiz":
           return (
-            <QuizScreen onComplete={(xp) => handleQuizComplete(xp)} />
+            <QuizScreen
+              initialProgress={phaseTwoProgress}
+              onProgress={(nextProgress) => setPhaseTwoProgress(prev => ({ ...prev, ...nextProgress }))}
+              onComplete={(xp) => handleQuizComplete(xp)}
+            />
           );
         case "analysis":
           return (
