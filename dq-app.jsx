@@ -221,7 +221,7 @@ function App() {
   const advanceParticipantPhase = (xpEarned) => {
     if (user?.role !== "participant") return;
     const now = Date.now();
-    const nextPhase = Math.min(5, user.team.phase + 1);
+    const nextPhase = Math.min(6, user.team.phase + 1);
     const hasStartedRace = Boolean(user.team.phase1CompletedAt);
     const elapsedFromPhase1Ms = nextPhase > 1 && hasStartedRace ? Math.max(0, now - user.team.phase1CompletedAt) : (user.team.elapsedFromPhase1Ms || 0);
     const updatedTeam = {
@@ -230,7 +230,7 @@ function App() {
       xp: (user.team.xp || 0) + (xpEarned || 0),
       phase1CompletedAt: user.team.phase === 1 ? now : (user.team.phase1CompletedAt || null),
       elapsedFromPhase1Ms,
-      raceFinishedAt: nextPhase === 5 ? now : (user.team.raceFinishedAt || null),
+      raceFinishedAt: nextPhase === 6 ? now : (user.team.raceFinishedAt || null),
     };
     syncTeamState(updatedTeam, xpEarned || 0);
     setMissionProgress({ missionIdx: 0 });
@@ -468,7 +468,7 @@ function App() {
         case "leaderboard":
           return <LeaderboardScreen />;
         case "mapa":
-          if (team.phase >= 5) return <FinalScreen team={team} onNav={setScreen} />;
+          if (team.phase >= 6) return <FinalScreen team={team} onNav={setScreen} />;
           return (
             <MapaScreen
               team={team}
@@ -485,7 +485,7 @@ function App() {
     return (
       <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.bg }}>
         {/* Sidebar */}
-        <Sidebar screen={screen} onNav={setScreen} hideMap={team.phase >= 5} />
+        <Sidebar screen={screen} onNav={setScreen} hideMap={team.phase >= 6} />
 
         {/* Main area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>

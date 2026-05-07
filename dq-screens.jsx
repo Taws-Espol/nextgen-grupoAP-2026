@@ -317,7 +317,7 @@ function DashboardScreen({ team, onNav, onPhaseSelect }) {
               <div style={{ fontWeight:800, fontSize:16 }}>{PHASES[team.phase-1].icon} {PHASES[team.phase-1].name}</div>
               <div style={{ color:C.muted, fontSize:12, marginTop:2 }}>{PHASES[team.phase-1].desc}</div>
             </div>
-            <Btn onClick={()=>onNav(team.phase===1?"lesson":team.phase===2?"charts":team.phase===3?"analysis":team.phase===4?"pitch":"leaderboard")}
+            <Btn onClick={()=>onNav(team.phase===1?"lesson":team.phase===2?"charts":team.phase===3?"analysis":team.phase===4?"pitch":team.phase===5?"pitch":"leaderboard")}
               style={{ background:PHASES[team.phase-1].color, color:"#0B0B1A", boxShadow:`0 0 20px ${PHASES[team.phase-1].color}40` }}>
               ¡Continuar! →
             </Btn>
