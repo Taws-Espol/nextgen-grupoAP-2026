@@ -1,6 +1,6 @@
 // screens/CorrelacionesScreen.jsx — extracted phase 4 screen
 
-function CorrelacionesScreen({ team, initialProgress, onProgress, onComplete }) {
+function CorrelacionesScreen({ team, initialProgress, onProgress, onComplete, autoAdvance=true }) {
   const members = ((team?.members || []).concat(["", "", "", "", "", ""])).slice(0, 6);
   const mCount = members.filter(m => m && m.trim()).length || 6;
   const NUMERIC_COLS = COLUMNS.filter(c => c.type === "number");
@@ -20,6 +20,7 @@ function CorrelacionesScreen({ team, initialProgress, onProgress, onComplete }) 
   const [earnedXP, setEarnedXP] = useState(initialProgress?.earnedXP ?? 0);
   const [showXPAmount, setShowXPAmount] = useState(null);
   const [hoverIdx, setHoverIdx] = useState(null);
+  const autoAdvancedRef = useRef(false);
 
   const xCol = COLUMNS.find(c => c.key === xVar);
   const yCol = COLUMNS.find(c => c.key === yVar);
@@ -27,6 +28,18 @@ function CorrelacionesScreen({ team, initialProgress, onProgress, onComplete }) 
   useEffect(() => {
     onProgress?.({ step, picks, pickerIdx, xVar, yVar, votes, voterIdx, analysisAnswers, analysisQIdx, conclusionText, approvals, earnedXP });
   }, [step, picks, pickerIdx, xVar, yVar, votes, voterIdx, analysisAnswers, analysisQIdx, conclusionText, approvals, earnedXP]);
+
+  useEffect(() => {
+    const allApproved = Object.keys(approvals).length >= mCount;
+    const ready = step === 5 && conclusionText.trim().length >= 10 && allApproved;
+    if (!autoAdvance || !ready) return;
+    if (autoAdvancedRef.current) return;
+    autoAdvancedRef.current = true;
+    const t = setTimeout(() => {
+      onComplete && onComplete(earnedXP);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [step, conclusionText, approvals, mCount, earnedXP, autoAdvance, onComplete]);
 
   const giveXP = (amount) => { setEarnedXP(p => p + amount); setShowXPAmount(amount); };
 

@@ -383,10 +383,22 @@ function DashboardScreen({ team, onNav, onPhaseSelect }) {
 // ═══════════════════════════════════════════
 // LESSON SCREEN
 // ═══════════════════════════════════════════
-function LessonScreen({ onComplete, teamXp }) {
+function LessonScreen({ onComplete, teamXp, autoAdvance=true }) {
   const [slide, setSlide] = useState(0);
   const total = LESSON_SLIDES.length;
   const s = LESSON_SLIDES[slide];
+  const autoAdvancedRef = useRef(false);
+
+  useEffect(() => {
+    if (!autoAdvance) return;
+    if (slide !== total - 1) return;
+    if (autoAdvancedRef.current) return;
+    autoAdvancedRef.current = true;
+    const t = setTimeout(() => {
+      onComplete && onComplete(150);
+    }, 800);
+    return () => clearTimeout(t);
+  }, [slide, total, autoAdvance, onComplete]);
 
   const visuals = {
     table: (
@@ -891,7 +903,7 @@ function FeedbackToast({ type, xpGain, correctAnswer, animated }) {
 // ═══════════════════════════════════════════
 // QUIZ SCREEN
 // ═══════════════════════════════════════════
-function QuizScreen({ onComplete, initialProgress=null, onProgress }) {
+function QuizScreen({ onComplete, initialProgress=null, onProgress, autoAdvance=true }) {
   const [qIdx, setQIdx] = useState(initialProgress?.qIdx ?? 0);
   const [answered, setAnswered] = useState(initialProgress?.answered ?? false);
   const [showQuestion, setShowQuestion] = useState(false);
@@ -905,6 +917,7 @@ function QuizScreen({ onComplete, initialProgress=null, onProgress }) {
   const [feedbackType, setFeedbackType] = useState(initialProgress?.feedbackType ?? null);
   const [canContinue, setCanContinue] = useState(initialProgress?.answered ?? false);
   const nucleusWrapperRef = useRef(null);
+  const autoAdvancedRef = useRef(false);
 
   const q = QUIZ_QUESTIONS[qIdx];
   const hasLoadedInitialProgressRef = useRef(false);
@@ -938,6 +951,16 @@ function QuizScreen({ onComplete, initialProgress=null, onProgress }) {
       done,
     });
   }, [qIdx, totalXP, streak, answered, feedbackType, done]);
+
+  useEffect(() => {
+    if (!autoAdvance || !done) return;
+    if (autoAdvancedRef.current) return;
+    autoAdvancedRef.current = true;
+    const t = setTimeout(() => {
+      onComplete && onComplete(totalXP);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [done, totalXP, autoAdvance, onComplete]);
 
   const cellColors = ["#9D6EF8", "#22D3EE", "#4ADE80", "#F59E0B"];
 
@@ -1321,13 +1344,14 @@ function getMissionContext(mission) {
   }
 }
 
-function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialProgress=null, onMissionProgress, onProgress }) {
+function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialProgress=null, onMissionProgress, onProgress, autoAdvance=true }) {
   const [missionIdx, setMissionIdx] = useState(initialProgress?.missionIdx ?? initialMissionIdx);
   const [showQuestion, setShowQuestion] = useState(initialProgress?.showQuestion ?? false);
   const [answer, setAnswer] = useState(initialProgress?.answer ?? "");
   const [feedback, setFeedback] = useState(initialProgress?.feedback ?? null);
   const [earnedXP, setEarnedXP] = useState(initialProgress?.earnedXP ?? 0);
   const [finished, setFinished] = useState(initialProgress?.finished ?? false);
+  const autoAdvancedRef = useRef(false);
 
   const mission = MISSION_CHALLENGES[missionIdx];
   const missionContext = getMissionContext(mission);
@@ -1348,6 +1372,16 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
   useEffect(() => {
     onProgress && onProgress({ missionIdx, showQuestion, answer, feedback, earnedXP, finished });
   }, [missionIdx, showQuestion, answer, feedback, earnedXP, finished]);
+
+  useEffect(() => {
+    if (!autoAdvance || !finished) return;
+    if (autoAdvancedRef.current) return;
+    autoAdvancedRef.current = true;
+    const t = setTimeout(() => {
+      onComplete && onComplete(earnedXP);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [finished, earnedXP, autoAdvance, onComplete]);
 
   const normalize = (value) => String(value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9.]+/g, " ").trim();
 
@@ -2019,7 +2053,7 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
 // ═══════════════════════════════════════════
 // PITCH BUILDER
 // ═══════════════════════════════════════════
-function PitchBuilderScreen({ team, onComplete }) {
+function PitchBuilderScreen({ team, onComplete, autoAdvance=true }) {
   const members = ((team?.members || []).concat(["", "", "", "", "", ""])).slice(0, 6);
   const mCount = members.filter(m => m && m.trim()).length || 6;
   const memberName = (i) => members[i]?.trim() || `Integrante ${i + 1}`;
@@ -2060,6 +2094,7 @@ function PitchBuilderScreen({ team, onComplete }) {
   const [presSlide, setPresSlide] = useState(0);
   const [xpAmount, setXpAmount]   = useState(null);
   const [earnedXP, setEarnedXP]   = useState(0);
+  const autoAdvancedRef = useRef(false);
 
   const slideColors = SLIDE_DEFS.map(s => s.color);
   const memberForSlide = (i) => i % mCount;
@@ -2069,6 +2104,17 @@ function PitchBuilderScreen({ team, onComplete }) {
   const slidesDone = slides.filter(s => Object.values(s.values).every(v => v.trim())).length;
 
   const giveXP = (amt) => { setXpAmount(amt); setEarnedXP(prev => prev + amt); };
+
+  useEffect(() => {
+    if (!autoAdvance) return;
+    if (step !== 3 || !allApproved) return;
+    if (autoAdvancedRef.current) return;
+    autoAdvancedRef.current = true;
+    const t = setTimeout(() => {
+      onComplete && onComplete(earnedXP);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [step, allApproved, earnedXP, autoAdvance, onComplete]);
 
   if (presenting) return (
     <div style={{ position:"fixed", inset:0, background:C.bg, display:"flex", flexDirection:"column", zIndex:100,
@@ -2718,10 +2764,9 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                   <div style={{ display:"flex", gap:10, marginTop:14 }}>
                     <Btn
                       variant="secondary"
-                      disabled={!phaseOneTutorialReady}
                       onClick={() => onPhaseComplete && onPhaseComplete()}
                     >
-                      {phaseOneTutorialReady ? "Completar Fase 1 y desbloquear Fase 2 →" : "Completa la guía para habilitar Fase 2"}
+                      Completar Fase 1 y desbloquear Fase 2 →
                     </Btn>
                   </div>
                 </div>
@@ -2754,10 +2799,9 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                   )}
                   <Btn
                     variant="secondary"
-                    disabled={phase.id === 1 && !phaseOneTutorialReady}
                     onClick={() => onPhaseComplete && onPhaseComplete()}
                   >
-                    {phase.id === 1 && !phaseOneTutorialReady ? "Abre DATASETS y GRAFICOS primero" : "Fase completada →"}
+                    Fase completada →
                   </Btn>
                 </div>
               ) : null}
@@ -3021,6 +3065,26 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
                 </div>
               );
             })}
+          </div>
+        </Card>
+
+        <Card style={{ padding:14 }}>
+          <div style={{ fontSize:12, fontWeight:800, color:C.muted, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>📊 Herramientas de análisis</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+            <div>
+              <label style={{ fontSize:12, color:C.muted, display:"block", marginBottom:6 }}>Calcular promedio de columna</label>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                {COLUMNS.filter(c=>c.type==="number").map(col => (
+                  <Btn key={col.key} size="sm" variant="secondary" onClick={()=>{
+                    const vals = visibleRows.map(r=>r[col.key]).filter(v=>typeof v==="number" && !isNaN(v));
+                    const avg = vals.length ? vals.reduce((s,v)=>s+v,0) / vals.length : 0;
+                    alert(`Promedio de ${col.label}:\n${avg.toFixed(2)}`);
+                  }}>
+                    {col.emoji} Prom. {col.label.split("(")[0]}
+                  </Btn>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
       </div>

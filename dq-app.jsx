@@ -126,6 +126,7 @@ function App() {
   const wsRef = useRef(null);
   const hasLoadedSessionRef = useRef(false);
   const phaseTimingRef = useRef({ phaseId: null, startedAt: Date.now() });
+  const phaseCompletionLockRef = useRef(false);
 
   const markPhaseStart = (phaseId) => {
     if (!phaseId) return;
@@ -223,9 +224,15 @@ function App() {
 
   const completePhaseWithScore = (phaseId, rawXp = 0) => {
     if (user?.role !== "participant") return;
+    if ((user?.team?.phase || 0) !== phaseId) return;
+    if (phaseCompletionLockRef.current) return;
+    phaseCompletionLockRef.current = true;
     const elapsedMs = getElapsedForPhase(phaseId);
     const phaseXp = computePhaseXp(phaseId, rawXp, elapsedMs);
     advanceParticipantPhase(phaseXp);
+    setTimeout(() => {
+      phaseCompletionLockRef.current = false;
+    }, 600);
   };
 
   // WebSocket Connection (with localStorage fallback)
@@ -333,15 +340,9 @@ function App() {
 
   const completePhase = () => {
     if (user?.role === "participant") {
-      const needsTutorial = user.team.phase === 1;
-      const tutorialReady = phaseOneTutorialProgress.datasets && phaseOneTutorialProgress.graficos && phaseOneTutorialProgress.confirmed;
-
-      if (needsTutorial && !tutorialReady) {
-        console.warn("Fase 1 bloqueada: abre DATASETS y GRAFICOS primero");
-        return;
-      }
-
-      completePhaseWithScore(1, 0);
+      // Completa la fase activa del equipo (no fija solo la fase 1)
+      const currentPhase = (user.team && user.team.phase) ? user.team.phase : 1;
+      completePhaseWithScore(currentPhase, 0);
     }
   };
 

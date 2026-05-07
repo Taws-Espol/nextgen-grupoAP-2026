@@ -230,7 +230,7 @@ const MISSION_CHALLENGES = [
     question: "¿Cuál es la diferencia real en millones de suscriptores entre el líder de la tabla y el último lugar visible?",
     tools: ["datasets"],
     answerType: "number",
-    answer: 247,
+    answer: 256.8,
     tolerance: 1,
     feedback: "Identifica los valores extremos y calcula el rango entre ambos.",
     xp: 45,
@@ -511,6 +511,7 @@ function ScatterChart({ data, xKey, yKey }) {
         return <g key={i} style={{ animation:`dotPop 0.4s ${i*0.04}s both` }}>
           <circle cx={px(d[xKey])} cy={py(d[yKey])} r={6} fill={col} opacity={0.85}/>
           <circle cx={px(d[xKey])} cy={py(d[yKey])} r={6} fill="none" stroke={col} strokeWidth={1} opacity={0.3}/>
+          <text x={px(d[xKey])+8} y={py(d[yKey])+4} fill={C.text} fontSize={9} fontFamily="Space Grotesk" style={{ pointerEvents:"none" }}>{String(d.channel).slice(0,18)}</text>
         </g>;
       })}
       <line x1={pad} x2={pad} y1={pad} y2={H-pad} stroke={C.border} strokeWidth={1}/>
@@ -541,21 +542,24 @@ function PieChart({ data, groupKey, valueKey }) {
     return { path:`M ${xi1} ${yi1} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${xi2} ${yi2} A ${rI} ${rI} 0 ${large} 0 ${xi1} ${yi1} Z`,
       color:colors[i%colors.length], label:k, pct:Math.round(frac*100) };
   });
+  const legendX = Math.min(W - 80, cx + r + 10);
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block" }}>
-      {arcs.map((arc,i)=>(
-        <path key={i} d={arc.path} fill={arc.color} opacity={0.85} stroke={C.bg} strokeWidth={2}/>
-      ))}
-      <circle cx={cx} cy={cy} r={rI-1} fill={C.card}/>
-      <text x={cx} y={cy-4} fill={C.text} fontSize={11} textAnchor="middle" fontWeight={700} fontFamily="Space Grotesk">Total</text>
-      <text x={cx} y={cy+12} fill={C.muted} fontSize={9} textAnchor="middle" fontFamily="Space Mono">{total.toFixed(0)}</text>
-      {arcs.map((arc,i)=>(
-        <g key={i}>
-          <rect x={240} y={i*28+20} width={12} height={12} fill={arc.color} rx={3}/>
-          <text x={258} y={i*28+31} fill={C.text} fontSize={10} fontFamily="Space Grotesk">{arc.label} ({arc.pct}%)</text>
-        </g>
-      ))}
-    </svg>
+    <div style={{ overflowX: "auto" }}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block", maxWidth:"100%" }}>
+        {arcs.map((arc,i)=>(
+          <path key={i} d={arc.path} fill={arc.color} opacity={0.85} stroke={C.bg} strokeWidth={2}/>
+        ))}
+        <circle cx={cx} cy={cy} r={rI-1} fill={C.card}/>
+        <text x={cx} y={cy-4} fill={C.text} fontSize={11} textAnchor="middle" fontWeight={700} fontFamily="Space Grotesk">Total</text>
+        <text x={cx} y={cy+12} fill={C.muted} fontSize={9} textAnchor="middle" fontFamily="Space Mono">{total.toFixed(0)}</text>
+        {arcs.map((arc,i)=>(
+          <g key={i}>
+            <rect x={legendX} y={i*20+18} width={12} height={12} fill={arc.color} rx={3}/>
+            <text x={legendX + 18} y={i*20+28} fill={C.text} fontSize={10} fontFamily="Space Grotesk">{arc.label} ({arc.pct}%)</text>
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -641,15 +645,12 @@ function TopBar({ team, screen, onLogout }) {
         <div style={{ color:C.muted, fontSize:11 }}>Fase {team.phase}/5 · {moduleLabel}</div>
       </div>
       <div style={{ flex:1 }}/>
-      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"6px 16px", borderRadius:24,
+      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 16px", borderRadius:24,
         background:`linear-gradient(90deg, ${C.purple}, ${C.cyan})`, boxShadow:`0 8px 28px ${C.purple}30`, color:"#fff" }}>
         <div style={{ fontSize:20 }}>⚡</div>
         <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start", lineHeight:1 }}>
           <div style={{ fontSize:18, fontWeight:900, fontFamily:"Space Mono" }}>{(team.xp || 0).toLocaleString()}</div>
           <div style={{ fontSize:11, opacity:0.95 }}>XP Global · Nivel {Math.floor((team.xp||0)/400)+1}</div>
-        </div>
-        <div style={{ width:140, marginLeft:12 }}>
-          <XPBar xp={team.xp||0} maxXp={Math.max(800, (Math.floor((team.xp||0)/400)+1)*400)} showLabel={false} />
         </div>
       </div>
       <div style={{ display:"flex", alignItems:"center", gap:6, background:`${C.green}15`, border:`1px solid ${C.green}25`, borderRadius:20, padding:"4px 12px" }}>
