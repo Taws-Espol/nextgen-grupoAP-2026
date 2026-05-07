@@ -1801,7 +1801,7 @@ function CinematicGuideOverlay({ step, total, accent, onNext, onSkip }) {
   }
 }
 
-function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false, initialProgress=null, onProgress }) {
+function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToSummary, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false, initialProgress=null, onProgress }) {
   const [chartType, setChartType] = useState(initialProgress?.chartType || "bar");
   const [xAxis, setXAxis] = useState(initialProgress?.xAxis ?? null);
   const [yAxis, setYAxis] = useState(initialProgress?.yAxis ?? null);
@@ -1931,6 +1931,9 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
           </div>
           {tutorialMode && onBackToMap && (
             <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>
+          )}
+          {onBackToSummary && (
+            <Btn variant="ghost" size="sm" onClick={onBackToSummary}>← Volver al resumen</Btn>
           )}
           {phaseThreeActive && onBackToMission && (
             <Btn variant="success" size="sm" onClick={onBackToMission}>🕵️ Volver a misiones</Btn>
@@ -2852,7 +2855,7 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
   );
 }
 
-function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActive=false, tutorialMode=false, initialProgress=null, onProgress }) {
+function DatasetsScreen({ onVisit, onBackToMap, onBackToSummary, onBackToMission, phaseThreeActive=false, tutorialMode=false, initialProgress=null, onProgress }) {
   const [search, setSearch] = useState(initialProgress?.search || "");
   const [category, setCategory] = useState(initialProgress?.category || "all");
   const [country, setCountry] = useState(initialProgress?.country || "all");
@@ -2980,6 +2983,7 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
         <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
           <Chip label={`${sorted.length} filas visibles`} color={C.cyan} />
           {tutorialMode && onBackToMap && <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>}
+          {onBackToSummary && <Btn variant="ghost" size="sm" onClick={onBackToSummary}>← Volver al resumen</Btn>}
           {phaseThreeActive && onBackToMission && <Btn variant="success" size="sm" onClick={onBackToMission}>🕵️ Volver a misiones</Btn>}
         </div>
       </div>
@@ -3136,6 +3140,7 @@ function FinalScreen({ team, onNav }) {
             </div>
 
             <div style={{ display:"flex", gap:10, marginTop:20 }}>
+              <Btn variant="primary" onClick={() => onNav && onNav('resumen-slides')}>📖 Ver slides</Btn>
               <Btn variant="primary" onClick={() => onNav && onNav('datasets')}>🔎 Abrir DATASETS</Btn>
               <Btn variant="primary" onClick={() => onNav && onNav('graficos')}>📊 Abrir GRAFICOS</Btn>
               <Btn variant="ghost" onClick={() => alert('Gracias por jugar TawsTube!')}>Cerrar resumen</Btn>
@@ -3205,7 +3210,7 @@ function AdminLeaderboardScreen({ teams }) {
                     {team.members.join(", ")}
                   </td>
                   <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                    <Chip label={`Fase ${team.phase}/5`} color={team.phase === 5 ? C.green : team.phase >= 3 ? C.cyan : C.muted} size="sm" />
+                    <Chip label={team.pitchSummary ? `Pitch enviado · Fase ${team.phase}/6` : `Fase ${team.phase}/6`} color={team.pitchSummary ? C.green : team.phase >= 3 ? C.cyan : C.muted} size="sm" />
                   </td>
                   <td style={{ padding: "12px 16px", textAlign: "right", fontFamily: "Space Mono", fontWeight: 700 }}>
                     {team.xp.toLocaleString()} XP
@@ -3231,7 +3236,7 @@ function AdminLeaderboardScreen({ teams }) {
           </Card>
           <Card style={{ padding: 16, textAlign: "center", background: `${C.green}10`, border: `1px solid ${C.green}25` }}>
             <div style={{ fontSize: 24, marginBottom: 4 }}>✅</div>
-            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{sorted.filter(t => t.phase === 5).length}</div>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 2 }}>{sorted.filter(t => t.phase >= 6 || t.pitchSummary).length}</div>
             <div style={{ fontSize: 12, color: C.muted }}>Completados</div>
           </Card>
         </div>
@@ -3273,7 +3278,7 @@ function AdminTeamsScreen({ teams }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                     <div style={{ fontSize: 18, fontWeight: 800 }}>{team.name}</div>
-                    <Chip label={`Fase ${team.phase}/5`} color={team.phase === 5 ? C.green : team.phase >= 3 ? C.cyan : C.muted} size="sm" />
+                    <Chip label={team.pitchSummary ? `Pitch enviado · Fase ${team.phase}/6` : `Fase ${team.phase}/6`} color={team.pitchSummary ? C.green : team.phase >= 3 ? C.cyan : C.muted} size="sm" />
                   </div>
                   <div style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>
                     {team.members.length} integrante{team.members.length !== 1 ? "s" : ""} · {team.xp.toLocaleString()} XP
@@ -3287,13 +3292,31 @@ function AdminTeamsScreen({ teams }) {
                           <div style={{ height: 8, background: `rgba(255,255,255,0.08)`, borderRadius: 4, overflow: "hidden" }}>
                             <div style={{ width: `${(team.phase / 5) * 100}%`, height: "100%", background: `linear-gradient(90deg,${C.cyan},${C.purple})` }} />
                           </div>
-                          <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Fase {team.phase}/5</div>
+                          <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>Fase {team.phase}/6</div>
                         </div>
                         <div>
                           <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, fontWeight: 600 }}>Experiencia</div>
                           <div style={{ fontSize: 18, fontWeight: 800, color: C.yellow }}>{team.xp.toLocaleString()} XP</div>
                         </div>
                       </div>
+
+                      {team.pitchSummary && (
+                        <div style={{ marginBottom: 12, padding: 12, borderRadius: 8, background: `${C.green}10`, border: `1px solid ${C.green}25` }}>
+                          <div style={{ fontSize: 11, color: C.green, marginBottom: 8, fontWeight: 700 }}>Pitch enviado</div>
+                          <div style={{ fontSize: 12, color: C.light, marginBottom: 6 }}>
+                            Tema: {typeof team.pitchSummary.selectedTheme === "number" ? `#${team.pitchSummary.selectedTheme}` : "Sin tema"}
+                          </div>
+                          <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
+                            Slides: {(team.pitchSummary.slideTitles || []).join(" · ")}
+                          </div>
+                          <div style={{ fontSize: 12, color: C.muted, marginBottom: 6 }}>
+                            Evidencias: {team.pitchSummary.evidenceCount || 0} · XP: {(team.pitchSummary.earnedXP || 0).toLocaleString()}
+                          </div>
+                          <div style={{ fontSize: 12, color: C.muted }}>
+                            Ejes: {team.pitchSummary.xVar || "-"} vs {team.pitchSummary.yVar || "-"}
+                          </div>
+                        </div>
+                      )}
 
                       <div style={{ background: `rgba(255,255,255,0.02)`, borderRadius: 8, padding: 12 }}>
                         <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, fontWeight: 600 }}>Integrantes</div>

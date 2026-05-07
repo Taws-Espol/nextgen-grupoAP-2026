@@ -1,6 +1,6 @@
 // screens/ResearchLabScreen.jsx — Fase 5 reimaginada: Preparar un pitch (diapositivas + ensayo)
 
-function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
+function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNav, viewOnly=false }) {
   const members = ((team?.members || []).concat(["", "", "", "", "", ""])).slice(0, 6);
   const mCount = members.filter(m => m && m.trim()).length || 6;
   const memberName = (i) => members[i]?.trim() || `Integrante ${i + 1}`;
@@ -50,7 +50,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
     giveXP(50);
   };
 
-  const [step, setStep] = useState(initialProgress?.step ?? 0);
+  const [step, setStep] = useState(viewOnly ? 3 : (initialProgress?.step ?? 0));
   const [selectedTheme, setSelectedTheme] = useState(initialProgress?.selectedTheme ?? null);
   const [showThemeIntro, setShowThemeIntro] = useState(false);
   const [xVar, setXVar] = useState(initialProgress?.xVar ?? "views");
@@ -63,8 +63,10 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
   const [showFullTable, setShowFullTable] = useState(false);
 
   useEffect(() => {
-    onProgress?.({ step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP });
-  }, [step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP]);
+    if (!viewOnly) {
+      onProgress?.({ step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP });
+    }
+  }, [step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP, viewOnly]);
 
   const giveXP = (n) => { setEarnedXP(p => p + n); setShowXPAmount(n); };
 
@@ -80,10 +82,23 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
   const startRehearsal = () => { /* kept for compatibility but not used */ };
 
   const completeAndSubmit = () => {
+    if (viewOnly) return;
     // give XP for slides completeness and rehearsal
     const slideScore = Math.min(300, slides.length * 60);
+    const totalXP = earnedXP + slideScore;
+    const pitchSummary = {
+      selectedTheme,
+      xVar,
+      yVar,
+      slides,
+      generatedCharts,
+      earnedXP: totalXP,
+      submittedAt: Date.now(),
+      slideTitles: slides.map(slide => slide.title),
+      evidenceCount: generatedCharts.length,
+    };
     giveXP(slideScore);
-    onComplete?.(earnedXP + slideScore);
+    onComplete?.({ xp: totalXP, pitchSummary });
   };
 
   // STEP 0: Intro
@@ -304,6 +319,87 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
   );
 
   // STEP 3: Editor de diapositivas
+  if (viewOnly && step === 3) return (
+    <div style={{ padding:28, flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div>
+          <Chip label='Resumen de slides' color={C.purple} />
+          <h2 style={{ margin:6, fontWeight:800 }}>Vista previa de la presentación</h2>
+          <div style={{ color:C.muted, fontSize:13 }}>Esta vista es solo lectura. Sirve para revisar el contenido ya preparado sin editarlo ni reenviarlo.</div>
+        </div>
+        <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 420px', gap:12 }}>
+        <div>
+          {slides.map((sl,i)=> (
+            <Card key={i} style={{ padding:12, marginBottom:8 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+                <div style={{ fontWeight:800 }}>{i+1}. {sl.title}</div>
+              </div>
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:12, color:C.muted, marginBottom:8 }}>Contenido de la slide</div>
+                <ul style={{ marginTop:0, paddingLeft:18 }}>
+                  {(sl.bullets||[]).map((b,j)=> <li key={j} style={{ marginBottom:6 }}>{b}</li>)}
+                </ul>
+                <div style={{ marginTop:8 }}>
+                  <div style={{ fontSize:12, color:C.muted }}>Evidencias adjuntas</div>
+                  {(sl.evidence||[]).length === 0 ? (
+                    <div style={{ color:C.muted, marginTop:6 }}>Ninguna.</div>
+                  ) : (
+                    (sl.evidence||[]).map((ev,ei) => (
+                      <div key={ei} style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
+                        <div style={{ width:120, height:64, border:`1px solid ${C.border}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          {ev.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={ev.xKey||xVar} yKey={ev.yKey||yVar} small /> : <div style={{ color:C.muted }}>Preview</div>}
+                        </div>
+                        <div style={{ flex:1 }}>{ev.type.toUpperCase()} {ev.key||''} {ev.xKey?`· ${ev.xKey} vs ${ev.yKey}`:''}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <div>
+          <Card style={{ padding:12 }}>
+            <div style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Vista previa</div>
+            <div style={{ minHeight:360, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ width:'100%' }}>
+                <div style={{ background:`linear-gradient(90deg, ${C.purple}22, ${C.purple}10)`, padding:14, borderRadius:8 }}>
+                  <div style={{ fontSize:20, fontWeight:900 }}>{slides[currentSlide]?.title}</div>
+                </div>
+                <div style={{ marginTop:12, padding:12, background:'rgba(255,255,255,0.02)', borderRadius:8 }}>
+                  <ul style={{ marginTop:8, paddingLeft:18 }}>
+                    {(slides[currentSlide]?.bullets||[]).map((b,bi) => <li key={bi} style={{ marginBottom:8, fontSize:15 }}>{b}</li>)}
+                  </ul>
+                </div>
+                <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
+                  {(slides[currentSlide]?.evidence || []).map((ev,ei) => (
+                    <div key={ei} style={{ width:180, border:`1px solid ${C.border}`, borderRadius:8, padding:8, background:C.surface }}>
+                      <div style={{ fontSize:11, color:C.muted, marginBottom:6 }}>{ev.type.toUpperCase()}</div>
+                      <div style={{ width:'100%', height:90, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        {ev.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={ev.xKey||xVar} yKey={ev.yKey||yVar} small /> : <div style={{ color:C.muted }}>Vista</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
+              <div style={{ display:'flex', gap:8 }}>
+                <Btn size='sm' variant='ghost' onClick={()=>setCurrentSlide(s => Math.max(0, s-1))}>←</Btn>
+                <Btn size='sm' variant='ghost' onClick={()=>setCurrentSlide(s => Math.min(slides.length-1, s+1))}>→</Btn>
+              </div>
+              <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Resumen</Btn>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+
   if (step === 3) return (
     <div style={{ padding:28, flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:14 }}>
       {showXPAmount && <XPPop amount={showXPAmount} onDone={()=>setShowXPAmount(null)} />}
@@ -314,6 +410,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
           <div style={{ color:C.muted, fontSize:13 }}>Cada módulo tiene un título, bullets y evidencias. Usen una plantilla para comenzar rápido.</div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>
           <select onChange={e=> applyTemplate(e.target.value)} style={{ padding:8, background:C.surface, border:`1px solid ${C.border}` }}>
             <option value=''>Aplicar plantilla...</option>
             {TEMPLATES.map(t=> <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -428,6 +525,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <Btn variant='secondary' onClick={()=>setStep(3)}>← Editar</Btn>
+            <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Resumen</Btn>
             <Btn variant='primary' onClick={()=>{ completeAndSubmit(); }}>Enviar pitch y completar fase</Btn>
           </div>
         </div>

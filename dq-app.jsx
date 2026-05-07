@@ -218,7 +218,7 @@ function App() {
     }
   };
 
-  const advanceParticipantPhase = (xpEarned) => {
+  const advanceParticipantPhase = (xpEarned, extraTeamData = {}) => {
     if (user?.role !== "participant") return;
     const now = Date.now();
     const nextPhase = Math.min(6, user.team.phase + 1);
@@ -231,6 +231,7 @@ function App() {
       phase1CompletedAt: user.team.phase === 1 ? now : (user.team.phase1CompletedAt || null),
       elapsedFromPhase1Ms,
       raceFinishedAt: nextPhase === 6 ? now : (user.team.raceFinishedAt || null),
+      ...extraTeamData,
     };
     syncTeamState(updatedTeam, xpEarned || 0);
     setMissionProgress({ missionIdx: 0 });
@@ -240,14 +241,14 @@ function App() {
     setScreen("mapa");
   };
 
-  const completePhaseWithScore = (phaseId, rawXp = 0) => {
+  const completePhaseWithScore = (phaseId, rawXp = 0, extraTeamData = {}) => {
     if (user?.role !== "participant") return;
     if ((user?.team?.phase || 0) !== phaseId) return;
     if (phaseCompletionLockRef.current) return;
     phaseCompletionLockRef.current = true;
     const elapsedMs = getElapsedForPhase(phaseId);
     const phaseXp = computePhaseXp(phaseId, rawXp, elapsedMs);
-    advanceParticipantPhase(phaseXp);
+    advanceParticipantPhase(phaseXp, extraTeamData);
     setTimeout(() => {
       phaseCompletionLockRef.current = false;
     }, 600);
@@ -382,8 +383,13 @@ function App() {
     completePhaseWithScore(1, xpEarned);
   };
 
-  const handlePitchComplete = (xpEarned) => {
-    completePhaseWithScore(5, xpEarned);
+  const handlePitchComplete = (result) => {
+    if (typeof result === "number") {
+      completePhaseWithScore(5, result);
+      return;
+    }
+    const xpEarned = Number(result?.xp || 0);
+    completePhaseWithScore(5, xpEarned, { pitchSummary: result?.pitchSummary || null });
   };
 
   if (!user) {
@@ -406,6 +412,7 @@ function App() {
               tutorialMode={team.phase === 1}
               onVisit={() => setPhaseOneTutorialProgress(prev => ({ ...prev, datasets: true }))}
               onBackToMap={() => setScreen("mapa")}
+              onBackToSummary={() => setScreen("resumen")}
               phaseThreeActive={team.phase === 3}
               onBackToMission={() => setScreen("analysis")}
               initialProgress={phaseThreeProgress.datasets}
@@ -420,6 +427,7 @@ function App() {
               tutorialMode={team.phase === 1}
               onVisit={() => setPhaseOneTutorialProgress(prev => ({ ...prev, graficos: true }))}
               onBackToMap={() => setScreen("mapa")}
+              onBackToSummary={() => setScreen("resumen")}
               phaseThreeActive={team.phase === 3}
               onBackToMission={() => setScreen("analysis")}
               initialProgress={phaseThreeProgress.chart}
@@ -463,6 +471,18 @@ function App() {
               initialProgress={phaseFiveProgress}
               onProgress={(p) => setPhaseFiveProgress(p)}
               onComplete={(xp) => handlePitchComplete(xp)}
+              onNav={setScreen}
+            />
+          );
+        case "resumen":
+          return <FinalScreen team={team} onNav={setScreen} />;
+        case "resumen-slides":
+          return (
+            <ResearchLabScreen
+              team={team}
+              initialProgress={phaseFiveProgress}
+              onNav={setScreen}
+              viewOnly={true}
             />
           );
         case "leaderboard":
