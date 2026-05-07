@@ -632,8 +632,8 @@ function CorrelacionesScreen({ team, initialProgress, onProgress, onComplete }) 
                   <div style={{ fontSize:28, marginBottom:6 }}>🎉</div>
                   <div style={{ fontWeight:800, color:C.green, fontSize:16 }}>¡Todos aprobaron! Tawsito tiene su nuevo conocimiento. 🤖</div>
                 </div>
-                <Btn onClick={() => onComplete && onComplete(earnedXP + 100)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
-                  Completar Fase 4 · Correlaciones +{earnedXP + 100} XP ⚡
+                <Btn onClick={() => onComplete && onComplete(earnedXP)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
+                  Completar Fase 4 · Correlaciones +{earnedXP} XP ⚡
                 </Btn>
               </div>
             )}

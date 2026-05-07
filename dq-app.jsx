@@ -2,6 +2,31 @@
 
 const { useState, useEffect, useRef } = React;
 
+const PHASE_SCORE_RULES = Object.fromEntries(
+  (PHASES || []).map(phase => [phase.id, phase])
+);
+
+function computePhaseXp(phaseId, rawXp = 0, elapsedMs = 0) {
+  const phase = PHASE_SCORE_RULES[phaseId] || { xpReward: 200, difficulty: 1, targetMinutes: 15 };
+  const baseXp = phase.xpReward || 200;
+  const difficultyBonus = Math.round(baseXp * 0.12 * Math.max(0, (phase.difficulty || phaseId) - 1));
+  const targetMs = Math.max(1, (phase.targetMinutes || 15) * 60 * 1000);
+  const speedRatio = Math.max(0, Math.min(1, 1 - (elapsedMs / targetMs)));
+  const timeBonus = Math.round(baseXp * 0.35 * speedRatio);
+  const activityBonus = Math.round(rawXp * 0.75);
+  return Math.max(baseXp, baseXp + difficultyBonus + timeBonus + activityBonus);
+}
+
+function getPhaseIdForScreen(screen, teamPhase) {
+  if (screen === "mapa") return teamPhase === 1 ? 1 : null;
+  if (screen === "lesson") return 1;
+  if (screen === "quiz") return 2;
+  if (screen === "analysis") return 3;
+  if (screen === "correlaciones") return 4;
+  if (screen === "pitch") return 5;
+  return null;
+}
+
 const DEFAULT_PHASE_FOUR_PROGRESS = {
   step: 0,
   picks: {},
@@ -100,6 +125,19 @@ function App() {
   const [phaseFourProgress, setPhaseFourProgress] = useState(initialSession.phaseFourProgress || cloneDefaultPhaseFourProgress());
   const wsRef = useRef(null);
   const hasLoadedSessionRef = useRef(false);
+  const phaseTimingRef = useRef({ phaseId: null, startedAt: Date.now() });
+
+  const markPhaseStart = (phaseId) => {
+    if (!phaseId) return;
+    if (phaseTimingRef.current.phaseId !== phaseId) {
+      phaseTimingRef.current = { phaseId, startedAt: Date.now() };
+    }
+  };
+
+  const getElapsedForPhase = (phaseId) => {
+    if (phaseTimingRef.current.phaseId !== phaseId) return 0;
+    return Math.max(0, Date.now() - phaseTimingRef.current.startedAt);
+  };
 
   useEffect(() => {
     if (hasLoadedSessionRef.current) return;
@@ -114,6 +152,12 @@ function App() {
       setPhaseFourProgress(initialSession.phaseFourProgress || cloneDefaultPhaseFourProgress());
     }
   }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== "participant") return;
+    const phaseId = getPhaseIdForScreen(screen, user.team?.phase);
+    markPhaseStart(phaseId);
+  }, [screen, user?.role, user?.team?.phase]);
 
   useEffect(() => {
     if (!user || user.role !== "participant") return;
@@ -134,14 +178,16 @@ function App() {
     }
   }, [user]);
 
-  const syncTeamState = (updatedTeam) => {
+  const syncTeamState = (updatedTeam, xpEarned = 0) => {
     setUser(prev => ({ ...prev, team: updatedTeam }));
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: "phase_complete",
         teamId: updatedTeam.id,
-        newPhase: updatedTeam.phase
+        newPhase: updatedTeam.phase,
+        xpEarned,
+        team: updatedTeam
       }));
       return;
     }
@@ -155,13 +201,31 @@ function App() {
 
   const advanceParticipantPhase = (xpEarned) => {
     if (user?.role !== "participant") return;
-    const updatedTeam = { ...user.team, phase: Math.min(5, user.team.phase + 1), xp: (user.team.xp || 0) + (xpEarned || 0) };
-    syncTeamState(updatedTeam);
+    const now = Date.now();
+    const nextPhase = Math.min(5, user.team.phase + 1);
+    const hasStartedRace = Boolean(user.team.phase1CompletedAt);
+    const elapsedFromPhase1Ms = nextPhase > 1 && hasStartedRace ? Math.max(0, now - user.team.phase1CompletedAt) : (user.team.elapsedFromPhase1Ms || 0);
+    const updatedTeam = {
+      ...user.team,
+      phase: nextPhase,
+      xp: (user.team.xp || 0) + (xpEarned || 0),
+      phase1CompletedAt: user.team.phase === 1 ? now : (user.team.phase1CompletedAt || null),
+      elapsedFromPhase1Ms,
+      raceFinishedAt: nextPhase === 5 ? now : (user.team.raceFinishedAt || null),
+    };
+    syncTeamState(updatedTeam, xpEarned || 0);
     setMissionProgress({ missionIdx: 0 });
     setPhaseTwoProgress(cloneDefaultPhaseTwoProgress());
     setPhaseThreeProgress(cloneDefaultPhaseThreeProgress());
     setPhaseFourProgress(cloneDefaultPhaseFourProgress());
     setScreen("mapa");
+  };
+
+  const completePhaseWithScore = (phaseId, rawXp = 0) => {
+    if (user?.role !== "participant") return;
+    const elapsedMs = getElapsedForPhase(phaseId);
+    const phaseXp = computePhaseXp(phaseId, rawXp, elapsedMs);
+    advanceParticipantPhase(phaseXp);
   };
 
   // WebSocket Connection (with localStorage fallback)
@@ -237,7 +301,7 @@ function App() {
   }, [user?.role]);
 
   const handleParticipantLogin = (teamData) => {
-    const newTeam = { ...teamData, xp: 0, rank: 2, phase: 1, badges: [], id: Date.now() };
+    const newTeam = { ...teamData, xp: 0, rank: 2, phase: 1, badges: [], id: Date.now(), phase1CompletedAt: null, elapsedFromPhase1Ms: 0, raceFinishedAt: null };
     setUser({ role: "participant", team: newTeam });
     setPhaseOneTutorialProgress({ datasets: false, graficos: false, confirmed: false });
     setMissionProgress({ missionIdx: 0 });
@@ -277,28 +341,28 @@ function App() {
         return;
       }
 
-      advanceParticipantPhase(100);
+      completePhaseWithScore(1, 0);
     }
   };
 
   const handleQuizComplete = (xpEarned) => {
-    advanceParticipantPhase(xpEarned);
+    completePhaseWithScore(2, xpEarned);
   };
 
   const handleMissionComplete = (xpEarned) => {
-    advanceParticipantPhase(xpEarned);
+    completePhaseWithScore(3, xpEarned);
   };
 
   const handleCorrelacionesComplete = (xpEarned) => {
-    advanceParticipantPhase(xpEarned);
+    completePhaseWithScore(4, xpEarned);
   };
 
   const handleLessonComplete = (xpEarned) => {
-    advanceParticipantPhase(xpEarned);
+    completePhaseWithScore(1, xpEarned);
   };
 
   const handlePitchComplete = (xpEarned) => {
-    advanceParticipantPhase(xpEarned);
+    completePhaseWithScore(5, xpEarned);
   };
 
   if (!user) {

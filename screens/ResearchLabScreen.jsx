@@ -246,7 +246,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete }) {
         <Card style={{ padding:20, textAlign:"center" }} glow={C.pink}>
           <div style={{ fontSize:40 }}>🎉</div>
           <div style={{ fontWeight:800, fontSize:18, color:C.pink }}>¡Reporte validado! Investigación completada.</div>
-          <Btn onClick={()=>{ onComplete?.(500); }} variant="success" size="lg" style={{ marginTop:12 }}>Completar Fase 5 +500 XP ⚡</Btn>
+          <Btn onClick={()=>{ onComplete?.(earnedXP); }} variant="success" size="lg" style={{ marginTop:12 }}>Completar Fase 5 +{earnedXP} XP ⚡</Btn>
         </Card>
       )}
     </div>

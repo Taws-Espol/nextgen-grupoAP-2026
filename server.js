@@ -53,6 +53,21 @@ const state = {
   participants: new Map(), // teamId -> ws connection
 };
 
+function getRaceElapsedMs(team) {
+  if (!team || !team.phase1CompletedAt) return Number.POSITIVE_INFINITY;
+  if (team.raceFinishedAt) return Number(team.elapsedFromPhase1Ms || 0);
+  if (team.elapsedFromPhase1Ms && team.phase >= 2) return Number(team.elapsedFromPhase1Ms || 0);
+  return Math.max(0, Date.now() - Number(team.phase1CompletedAt || Date.now()));
+}
+
+function sortTeamsForLeaderboard(teams) {
+  return [...teams].sort((a, b) => {
+    if ((b.phase || 0) !== (a.phase || 0)) return (b.phase || 0) - (a.phase || 0);
+    if ((b.xp || 0) !== (a.xp || 0)) return (b.xp || 0) - (a.xp || 0);
+    return getRaceElapsedMs(a) - getRaceElapsedMs(b);
+  });
+}
+
 // ═══════════════════════════════════════════
 // WEBSOCKET HANDLERS
 // ═══════════════════════════════════════════
@@ -97,10 +112,15 @@ wss.on("connection", (ws) => {
         case "phase_complete":
           if (userRole === "participant" && state.teams.has(teamId)) {
             const team = state.teams.get(teamId);
-            team.phase = Math.min(5, team.phase + 1);
-            team.xp = (team.xp || 0) + 100; // Award XP
+            const xpEarned = Number(message.xpEarned || 0);
+
+            team.phase = Math.min(5, message.newPhase || (team.phase + 1));
+            if (message.team) {
+              Object.assign(team, message.team);
+            }
+            team.xp = Number((message.team && message.team.xp) || team.xp || 0);
             
-            console.log(`[PHASE] ${team.name} → Phase ${team.phase} (+100 XP)`);
+            console.log(`[PHASE] ${team.name} → Phase ${team.phase} (+${xpEarned || 0} XP)`);
             
             // Broadcast to admins
             broadcastToAdmins({
@@ -131,16 +151,66 @@ wss.on("connection", (ws) => {
         // ─── ADMIN: Request Leaderboard ────
         case "request_leaderboard":
           if (userRole === "admin") {
-            const teams = Array.from(state.teams.values()).sort((a, b) => {
-              if (b.phase !== a.phase) return b.phase - a.phase;
-              return b.xp - a.xp;
-            });
+            const teams = sortTeamsForLeaderboard(Array.from(state.teams.values()));
             
             ws.send(JSON.stringify({
               type: "leaderboard_update",
               teams: teams,
               timestamp: Date.now()
             }));
+          }
+          break;
+
+        // ─── ADMIN: Delete single team ────
+        case "admin_delete_team":
+          if (userRole === "admin") {
+            const delId = message.teamId;
+            if (state.teams.has(delId)) {
+              const t = state.teams.get(delId);
+              state.teams.delete(delId);
+
+              // notify participant (if connected) and close their socket
+              if (state.participants.has(delId)) {
+                try {
+                  const pws = state.participants.get(delId);
+                  if (pws && pws.readyState === WebSocket.OPEN) {
+                    pws.send(JSON.stringify({ type: "kicked", reason: "deleted_by_admin" }));
+                    pws.close();
+                  }
+                } catch (e) { /* ignore */ }
+                state.participants.delete(delId);
+              }
+
+              // broadcast deletion to all admins
+              broadcastToAdmins({ type: "team_deleted", teamId: delId });
+
+              // broadcast updated snapshot
+              broadcastToAdmins({ type: "teams_snapshot", teams: Array.from(state.teams.values()) });
+              console.log(`[ADMIN] Deleted team ${delId} (${t.name})`);
+            }
+          }
+          break;
+
+        // ─── ADMIN: Reset all teams ────
+        case "admin_reset_all":
+          if (userRole === "admin") {
+            // notify and close all participant sockets
+            state.participants.forEach((pws, pid) => {
+              try {
+                if (pws && pws.readyState === WebSocket.OPEN) {
+                  pws.send(JSON.stringify({ type: "kicked", reason: "reset_by_admin" }));
+                  pws.close();
+                }
+              } catch (e) { /* ignore */ }
+            });
+
+            state.participants.clear();
+            state.teams.clear();
+
+            // notify admins
+            broadcastToAdmins({ type: "teams_cleared" });
+            broadcastToAdmins({ type: "teams_snapshot", teams: [] });
+            console.log(`[ADMIN] Reset all teams`);
           }
           break;
 

@@ -2059,6 +2059,7 @@ function PitchBuilderScreen({ team, onComplete }) {
   const [presenting, setPres]     = useState(false);
   const [presSlide, setPresSlide] = useState(0);
   const [xpAmount, setXpAmount]   = useState(null);
+  const [earnedXP, setEarnedXP]   = useState(0);
 
   const slideColors = SLIDE_DEFS.map(s => s.color);
   const memberForSlide = (i) => i % mCount;
@@ -2067,7 +2068,7 @@ function PitchBuilderScreen({ team, onComplete }) {
   const allApproved = Object.keys(approvals).length >= mCount;
   const slidesDone = slides.filter(s => Object.values(s.values).every(v => v.trim())).length;
 
-  const giveXP = (amt) => { setXpAmount(amt); };
+  const giveXP = (amt) => { setXpAmount(amt); setEarnedXP(prev => prev + amt); };
 
   if (presenting) return (
     <div style={{ position:"fixed", inset:0, background:C.bg, display:"flex", flexDirection:"column", zIndex:100,
@@ -2096,7 +2097,7 @@ function PitchBuilderScreen({ team, onComplete }) {
         </div>
         {presSlide < SLIDE_DEFS.length-1
           ? <Btn onClick={()=>setPresSlide(p=>p+1)} variant="cyan">Siguiente →</Btn>
-          : <Btn onClick={()=>{ setPres(false); if(step>=3) { onComplete&&onComplete(300); } }} variant="success">
+          : <Btn onClick={()=>{ setPres(false); if(step>=3) { onComplete&&onComplete(earnedXP); } }} variant="success">
               {step>=3 ? "Finalizar presentación ✓" : "Cerrar vista previa"}
             </Btn>
         }
@@ -2330,8 +2331,8 @@ function PitchBuilderScreen({ team, onComplete }) {
           </div>
           <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
             <Btn onClick={() => { setPresSlide(0); setPres(true); }} variant="secondary">▶ Ver presentación final</Btn>
-            <Btn onClick={() => { onComplete&&onComplete(300); }} variant="success" size="lg">
-              Completar Fase 5 +300 XP ⚡
+            <Btn onClick={() => { onComplete&&onComplete(earnedXP); }} variant="success" size="lg">
+              Completar Fase 5 +{earnedXP} XP ⚡
             </Btn>
           </div>
         </Card>

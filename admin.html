@@ -72,11 +72,34 @@ function AdminApp() {
   const [stats, setStats] = useState({ total: 0, active: 0, completed: 0 });
   const [lastUpdate, setLastUpdate] = useState(Date.now());
   const wsRef = useRef(null);
+  const connectedRef = useRef(false);
   const pollIntervalRef = useRef(null);
+
+  const formatElapsedMs = (ms) => {
+    if (ms == null || !Number.isFinite(ms) || ms === Number.POSITIVE_INFINITY) return "--:--";
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  };
+
+  const getTeamRaceElapsedMs = (team) => {
+    if (!team || !team.phase1CompletedAt) return Number.POSITIVE_INFINITY;
+    if (team.raceFinishedAt) return Number(team.elapsedFromPhase1Ms || 0);
+    if (team.elapsedFromPhase1Ms && team.phase >= 2) return Number(team.elapsedFromPhase1Ms || 0);
+    return Math.max(0, Date.now() - Number(team.phase1CompletedAt || Date.now()));
+  };
+
+  const sortTeams = (list) => [...list].sort((a, b) => {
+    if ((b.phase || 0) !== (a.phase || 0)) return (b.phase || 0) - (a.phase || 0);
+    if ((b.xp || 0) !== (a.xp || 0)) return (b.xp || 0) - (a.xp || 0);
+    return getTeamRaceElapsedMs(a) - getTeamRaceElapsedMs(b);
+  });
 
   // POLLING: Auto-refresh leaderboard every 1 second
   useEffect(() => {
     const poll = () => {
+      if (connectedRef.current) return;
       loadTeamsFromLocalStorage();
       setLastUpdate(Date.now());
     };
@@ -92,6 +115,7 @@ function AdminApp() {
   // STORAGE LISTENER: Detect changes from other tabs
   useEffect(() => {
     const handleStorageChange = (e) => {
+      if (connectedRef.current) return;
       if (e.key === "dq_teams") {
         console.log("🔄 Cambio detectado en otra tab, actualizando leaderboard");
         loadTeamsFromLocalStorage();
@@ -137,6 +161,7 @@ function AdminApp() {
       clearTimeout(timeout);
       console.log("✓ Admin WebSocket conectado");
       setConnected(true);
+      connectedRef.current = true;
       setUseLocalStorage(false);
       
       ws.send(JSON.stringify({ type: "join_admin" }));
@@ -152,6 +177,7 @@ function AdminApp() {
             setTeams(message.teams);
             updateStats(message.teams);
             setLastUpdate(Date.now());
+            localStorage.setItem("dq_teams", JSON.stringify(message.teams || []));
             break;
             
           case "team_update":
@@ -190,6 +216,23 @@ function AdminApp() {
             updateStats(message.teams);
             setLastUpdate(Date.now());
             break;
+
+          case "team_deleted":
+            setTeams(prev => {
+              const updated = prev.filter(t => t.id !== message.teamId);
+              updateStats(updated);
+              localStorage.setItem("dq_teams", JSON.stringify(updated));
+              setLastUpdate(Date.now());
+              return updated;
+            });
+            break;
+
+          case "teams_cleared":
+            setTeams([]);
+            updateStats([]);
+            setLastUpdate(Date.now());
+            localStorage.removeItem("dq_teams");
+            break;
         }
       } catch (err) {
         console.error("Parse error:", err);
@@ -200,6 +243,7 @@ function AdminApp() {
       clearTimeout(timeout);
       console.warn("Admin WebSocket error, fallback a localStorage:", err);
       setConnected(false);
+      connectedRef.current = false;
       setUseLocalStorage(true);
       loadTeamsFromLocalStorage();
     };
@@ -208,6 +252,7 @@ function AdminApp() {
       clearTimeout(timeout);
       console.warn("Admin WebSocket cerrado");
       setConnected(false);
+      connectedRef.current = false;
     };
 
     wsRef.current = ws;
@@ -219,6 +264,7 @@ function AdminApp() {
   }, []);
 
   const loadTeamsFromLocalStorage = () => {
+    if (connectedRef.current) return;
     const saved = localStorage.getItem("dq_teams");
     if (saved) {
       try {
@@ -231,6 +277,42 @@ function AdminApp() {
     }
   };
 
+  // UTIL: enviar mensaje admin via WS
+  const sendAdminMessage = (msg) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(msg));
+    } else {
+      console.warn("WS no conectado — acción admin en modo local");
+    }
+  };
+
+  const handleDeleteTeam = (teamId) => {
+    if (!confirm("¿Eliminar este equipo? Esta acción no se puede deshacer.")) return;
+    if (connected) {
+      sendAdminMessage({ type: "admin_delete_team", teamId });
+    } else {
+      // local storage fallback
+      const saved = JSON.parse(localStorage.getItem("dq_teams") || "[]");
+      const updated = saved.filter(t => t.id !== teamId);
+      localStorage.setItem("dq_teams", JSON.stringify(updated));
+      setTeams(updated);
+      updateStats(updated);
+      setLastUpdate(Date.now());
+    }
+  };
+
+  const handleResetAll = () => {
+    if (!confirm("¿Reiniciar todo? Esto eliminará todos los equipos.")) return;
+    if (connected) {
+      sendAdminMessage({ type: "admin_reset_all" });
+    } else {
+      localStorage.removeItem("dq_teams");
+      setTeams([]);
+      updateStats([]);
+      setLastUpdate(Date.now());
+    }
+  };
+
   const updateStats = (teamsList) => {
     const newStats = {
       total: teamsList.length,
@@ -240,10 +322,7 @@ function AdminApp() {
     setStats(newStats);
   };
 
-  const leaderboard = [...teams].sort((a, b) => {
-    if (b.phase !== a.phase) return b.phase - a.phase;
-    return b.xp - a.xp;
-  });
+  const leaderboard = sortTeams(teams);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.bg }}>
@@ -280,9 +359,12 @@ function AdminApp() {
         </div>
 
         <div style={{ padding: 12, borderTop: `1px solid ${C.border}` }}>
-          <a href="/" style={{ display: "block", padding: 12, textAlign: "center", background: `${C.cyan}20`, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.cyan, textDecoration: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            ← Volver
-          </a>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={handleResetAll} style={{ flex:1, padding: 10, background: `${C.red}90`, border: `1px solid ${C.red}80`, color: "#fff", borderRadius: 8, fontWeight:800 }}>Reiniciar todo</button>
+            <a href="/" style={{ display: "block", padding: 12, textAlign: "center", background: `${C.cyan}20`, border: `1px solid ${C.cyan}40`, borderRadius: 8, color: C.cyan, textDecoration: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+              ← Volver
+            </a>
+          </div>
         </div>
       </div>
 
@@ -338,10 +420,11 @@ function AdminApp() {
                           <span style={{ fontSize: 32 }}>{team.avatar}</span>
                           <div>
                             <div style={{ fontSize: 18, fontWeight: 800 }}>{team.name}</div>
-                            <div style={{ fontSize: 12, color: C.muted }}>
+                            <div style={{ fontSize: 12, color: C.muted, display: "flex", gap: 8, flexWrap: "wrap" }}>
                               <span className={`status-${team.connected ? "online" : "offline"}`}>
                                 {team.connected ? "● En línea" : "● Offline"}
                               </span>
+                              <span>⏱ {team.phase > 1 ? formatElapsedMs(getTeamRaceElapsedMs(team)) : "Esperando fase 1"}</span>
                             </div>
                           </div>
                         </div>
@@ -365,6 +448,10 @@ function AdminApp() {
                           <div style={{ background: `${C.yellow}20`, padding: 8, borderRadius: 8, textAlign: "center" }}>
                             <div style={{ fontSize: 14, fontWeight: 800, color: C.yellow }}>{team.xp || 0}</div>
                             <div style={{ fontSize: 10, color: C.muted }}>XP</div>
+                          </div>
+                          <div style={{ background: `${C.cyan}18`, padding: 8, borderRadius: 8, textAlign: "center" }}>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: C.cyan }}>{team.phase > 1 ? formatElapsedMs(getTeamRaceElapsedMs(team)) : "--:--"}</div>
+                            <div style={{ fontSize: 10, color: C.muted }}>Tiempo</div>
                           </div>
                         </div>
                       </div>
@@ -394,8 +481,13 @@ function AdminApp() {
                             <div><span style={{ color: C.muted }}>Estado:</span> {team.connected ? "✓ Conectado" : "✕ Offline"}</div>
                             <div><span style={{ color: C.muted }}>Fase:</span> {team.phase}/5</div>
                             <div><span style={{ color: C.muted }}>XP:</span> {team.xp || 0}</div>
+                            <div><span style={{ color: C.muted }}>Tiempo:</span> {team.phase > 1 ? formatElapsedMs(getTeamRaceElapsedMs(team)) : "Esperando fase 1"}</div>
                           </div>
                         </div>
+                      </div>
+                      <div style={{ marginTop:12, display:"flex", gap:8 }}>
+                        <button onClick={() => handleDeleteTeam(team.id)} style={{ background:C.red, color:'#fff', border:'none', padding:'10px 12px', borderRadius:8, fontWeight:800 }}>Eliminar equipo</button>
+                        <button onClick={() => navigator.clipboard?.writeText(JSON.stringify(team))} style={{ background:'transparent', color:C.muted, border:`1px solid ${C.border}`, padding:'10px 12px', borderRadius:8 }}>Copiar JSON</button>
                       </div>
                     </div>
                   )}

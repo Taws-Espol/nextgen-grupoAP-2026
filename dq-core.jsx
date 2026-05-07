@@ -35,11 +35,11 @@ const COLUMNS = [
 ];
 
 const PHASES = [
-  { id:1, name:"Conoce tus datos",      icon:"🔍", duration:"30 min", color:"#9D6EF8", xpReward:200, desc:"¿Qué es un dataset? Filas, columnas y tipos de datos." },
-  { id:2, name:"Fase teórica",          icon:"❓", duration:"35 min", color:"#22D3EE", xpReward:350, desc:"Lee un concepto antes de responder y elige la situación correcta." },
-  { id:3, name:"Misiones libres",       icon:"🕵️", duration:"40 min", color:"#4ADE80", xpReward:400, desc:"Resuelve enigmas de negocio manipulando datos y gráficos." },
-  { id:4, name:"Pitch Builder",         icon:"🎤", duration:"30 min", color:"#F59E0B", xpReward:300, desc:"Construye tu presentación con tus hallazgos." },
-  { id:5, name:"Pitch en vivo",         icon:"🚀", duration:"Live",   color:"#F87171", xpReward:500, desc:"¡Presenta ante todos y vota por el mejor equipo!" },
+  { id:1, name:"Conoce tus datos",      icon:"🔍", duration:"30 min", color:"#9D6EF8", xpReward:200, difficulty:1, targetMinutes:15, desc:"¿Qué es un dataset? Filas, columnas y tipos de datos." },
+  { id:2, name:"Fase teórica",          icon:"❓", duration:"35 min", color:"#22D3EE", xpReward:350, difficulty:2, targetMinutes:20, desc:"Lee un concepto antes de responder y elige la situación correcta." },
+  { id:3, name:"Misiones libres",       icon:"🕵️", duration:"40 min", color:"#4ADE80", xpReward:400, difficulty:3, targetMinutes:25, desc:"Resuelve enigmas de negocio manipulando datos y gráficos." },
+  { id:4, name:"Pitch Builder",         icon:"🎤", duration:"30 min", color:"#F59E0B", xpReward:300, difficulty:4, targetMinutes:20, desc:"Construye tu presentación con tus hallazgos." },
+  { id:5, name:"Pitch en vivo",         icon:"🚀", duration:"Live",   color:"#F87171", xpReward:500, difficulty:5, targetMinutes:25, desc:"¡Presenta ante todos y vota por el mejor equipo!" },
 ];
 
 const LEADERBOARD_DATA = [
@@ -641,6 +641,17 @@ function TopBar({ team, screen, onLogout }) {
         <div style={{ color:C.muted, fontSize:11 }}>Fase {team.phase}/5 · {moduleLabel}</div>
       </div>
       <div style={{ flex:1 }}/>
+      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"6px 16px", borderRadius:24,
+        background:`linear-gradient(90deg, ${C.purple}, ${C.cyan})`, boxShadow:`0 8px 28px ${C.purple}30`, color:"#fff" }}>
+        <div style={{ fontSize:20 }}>⚡</div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start", lineHeight:1 }}>
+          <div style={{ fontSize:18, fontWeight:900, fontFamily:"Space Mono" }}>{(team.xp || 0).toLocaleString()}</div>
+          <div style={{ fontSize:11, opacity:0.95 }}>XP Global · Nivel {Math.floor((team.xp||0)/400)+1}</div>
+        </div>
+        <div style={{ width:140, marginLeft:12 }}>
+          <XPBar xp={team.xp||0} maxXp={Math.max(800, (Math.floor((team.xp||0)/400)+1)*400)} showLabel={false} />
+        </div>
+      </div>
       <div style={{ display:"flex", alignItems:"center", gap:6, background:`${C.green}15`, border:`1px solid ${C.green}25`, borderRadius:20, padding:"4px 12px" }}>
         <span>📊</span>
         <span style={{ color:C.green, fontWeight:800, fontSize:14 }}>Fase {team.phase}</span>
