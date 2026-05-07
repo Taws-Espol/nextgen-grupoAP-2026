@@ -443,7 +443,7 @@ function App() {
         case "leaderboard":
           return <LeaderboardScreen />;
         case "mapa":
-        default:
+          if (team.phase >= 5) return <FinalScreen team={team} onNav={setScreen} />;
           return (
             <MapaScreen
               team={team}
@@ -460,7 +460,7 @@ function App() {
     return (
       <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.bg }}>
         {/* Sidebar */}
-        <Sidebar screen={screen} onNav={setScreen} />
+        <Sidebar screen={screen} onNav={setScreen} hideMap={team.phase >= 5} />
 
         {/* Main area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>

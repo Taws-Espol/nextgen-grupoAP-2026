@@ -602,12 +602,13 @@ function LineChart({ data, xKey, yKey, color=C.cyan }) {
 // LAYOUT: SIDEBAR + TOPBAR
 // ═══════════════════════════════════════════
 
-function Sidebar({ screen, onNav }) {
-  const nav = [
+function Sidebar({ screen, onNav, hideMap=false }) {
+  const baseNav = [
     { id:"datasets", icon:"🧾", label:"Datasets" },
     { id:"mapa",     icon:"🗺️", label:"Mapa" },
     { id:"graficos", icon:"📊", label:"Graficos" },
   ];
+  const nav = hideMap ? baseNav.filter(i => i.id !== "mapa") : baseNav;
   return (
     <div style={{ width:72, background:C.surface, borderRight:`1px solid ${C.border}`, display:"flex",
       flexDirection:"column", alignItems:"center", padding:"12px 0", gap:2, flexShrink:0, height:"100vh" }}>

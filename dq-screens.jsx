@@ -3103,6 +3103,51 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToMission, phaseThreeActiv
 }
 
 // ═══════════════════════════════════════════
+// FINAL: Pantalla de cierre cuando el equipo completó todas las fases
+// ═══════════════════════════════════════════
+function FinalScreen({ team, onNav }) {
+  const elapsedMs = team && team.elapsedFromPhase1Ms ? team.elapsedFromPhase1Ms : null;
+  const fmt = (ms) => {
+    if (!ms) return "—";
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}m ${sec}s`;
+  };
+
+  return (
+    <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <Card style={{ padding:32, maxWidth:860 }} glow={C.purple}>
+        <div style={{ display:"flex", gap:20, alignItems:"center" }}>
+          <div style={{ fontSize:72 }}>🎉</div>
+          <div style={{ flex:1 }}>
+            <h1 style={{ fontSize:28, margin:0, fontWeight:900 }}>¡Felicidades, equipo {team.name}!</h1>
+            <p style={{ color:C.muted, marginTop:8 }}>Han completado todo el recorrido de TawsTube. Gracias por investigar, cuestionar y presentar hallazgos.</p>
+
+            <div style={{ display:"flex", gap:12, marginTop:16, alignItems:"center" }}>
+              <div style={{ background:`${C.cyan}12`, padding:12, borderRadius:12 }}>
+                <div style={{ fontSize:13, color:C.muted }}>XP Total</div>
+                <div style={{ fontSize:20, fontWeight:800 }}>{(team.xp||0).toLocaleString()} XP</div>
+              </div>
+              <div style={{ background:`${C.green}12`, padding:12, borderRadius:12 }}>
+                <div style={{ fontSize:13, color:C.muted }}>Tiempo desde Fase 1</div>
+                <div style={{ fontSize:20, fontWeight:800 }}>{fmt(elapsedMs)}</div>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:10, marginTop:20 }}>
+              <Btn variant="primary" onClick={() => onNav && onNav('datasets')}>🔎 Abrir DATASETS</Btn>
+              <Btn variant="primary" onClick={() => onNav && onNav('graficos')}>📊 Abrir GRAFICOS</Btn>
+              <Btn variant="ghost" onClick={() => alert('Gracias por jugar TawsTube!')}>Cerrar resumen</Btn>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════
 // ADMIN: LEADERBOARD
 // ═══════════════════════════════════════════
 function AdminLeaderboardScreen({ teams }) {
