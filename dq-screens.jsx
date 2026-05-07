@@ -55,7 +55,7 @@ function LoginScreen({ onParticipantLogin, onAdminLogin }) {
   const [adminPass, setAdminPass] = useState("");
   const [adminError, setAdminError] = useState("");
   const [teamName, setTeamName] = useState("");
-  const [members, setMembers] = useState(["","","",""]);
+  const [members, setMembers] = useState(["","","","","",""]);
   const [avatar, setAvatar] = useState("🚀");
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
@@ -80,7 +80,7 @@ function LoginScreen({ onParticipantLogin, onAdminLogin }) {
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center",
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", padding:"32px 0",
       backgroundImage:`radial-gradient(ellipse at 20% 50%, ${C.purple}12 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, ${C.cyan}10 0%, transparent 50%)` }}>
 
       {/* Floating particles */}
@@ -169,7 +169,7 @@ function LoginScreen({ onParticipantLogin, onAdminLogin }) {
               <div className="fade-in">
                 <h2 style={{ fontSize:20, fontWeight:800, marginBottom:6 }}>Integrantes del equipo</h2>
                 <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>Selecciona quienes ayudaran a Tawsito a entrenar la IA con insights confiables.</p>
-                <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:24 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:24, maxHeight:"48vh", overflowY:"auto", paddingRight:8 }}>
                   {members.map((m,i)=>(
                     <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
                       <div style={{ width:32, height:32, borderRadius:8, background:`${C.purple}20`, display:"flex", alignItems:"center", justifyContent:"center", color:C.purple, fontWeight:800, fontSize:13, flexShrink:0 }}>{i+1}</div>
@@ -2020,8 +2020,8 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToMission, 
 // PITCH BUILDER
 // ═══════════════════════════════════════════
 function PitchBuilderScreen({ team, onComplete }) {
-  const members = ((team?.members || []).concat(["", "", "", ""])).slice(0, 4);
-  const mCount = members.filter(m => m && m.trim()).length || 4;
+  const members = ((team?.members || []).concat(["", "", "", "", "", ""])).slice(0, 6);
+  const mCount = members.filter(m => m && m.trim()).length || 6;
   const memberName = (i) => members[i]?.trim() || `Integrante ${i + 1}`;
 
   const SLIDE_DEFS = [
@@ -2298,8 +2298,8 @@ function PitchBuilderScreen({ team, onComplete }) {
         </span>
       </div>
 
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        {[0,1,2,3].map(i => {
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+        {Array.from({ length: 6 }, (_, i) => i).map(i => {
           if (i >= mCount) return null;
           const approved = approvals[i];
           return (

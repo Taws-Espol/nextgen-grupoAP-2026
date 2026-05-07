@@ -1,8 +1,8 @@
 // screens/CorrelacionesScreen.jsx — extracted phase 4 screen
 
 function CorrelacionesScreen({ team, initialProgress, onProgress, onComplete }) {
-  const members = ((team?.members || []).concat(["", "", "", ""])).slice(0, 4);
-  const mCount = members.filter(m => m && m.trim()).length || 4;
+  const members = ((team?.members || []).concat(["", "", "", "", "", ""])).slice(0, 6);
+  const mCount = members.filter(m => m && m.trim()).length || 6;
   const NUMERIC_COLS = COLUMNS.filter(c => c.type === "number");
   const memberName = (i) => members[i]?.trim() || `Integrante ${i + 1}`;
 
