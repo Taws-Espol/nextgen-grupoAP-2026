@@ -52,8 +52,6 @@ const AVATARS = ["🚀","🕵️","💻","🥷","🏴‍☠️","👑","🦊","�
 
 function LoginScreen({ onParticipantLogin, onAdminLogin }) {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminPass, setAdminPass] = useState("");
-  const [adminError, setAdminError] = useState("");
   const [teamName, setTeamName] = useState("");
   const [members, setMembers] = useState(["","","","","",""]);
   const [avatar, setAvatar] = useState("🚀");
@@ -68,15 +66,6 @@ function LoginScreen({ onParticipantLogin, onAdminLogin }) {
   const submit = () => {
     if(!canNext2) { setError("¡Al menos 2 integrantes!"); return; }
     onParticipantLogin({ name:teamName, members:members.filter(m=>m.trim()), avatar, xp:0, rank:2, phase:1, badges:[] });
-  };
-
-  const handleAdminSubmit = () => {
-    if (adminPass.trim().length >= 4) {
-      setAdminError("");
-      onAdminLogin();
-    } else {
-      setAdminError("Contraseña requerida (mín. 4 caracteres)");
-    }
   };
 
   return (
@@ -124,14 +113,10 @@ function LoginScreen({ onParticipantLogin, onAdminLogin }) {
               <h2 style={{ fontSize:20, fontWeight:800 }}>🛡️ Panel Administrativa</h2>
               <button onClick={() => setIsAdmin(false)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:C.muted }}>✕</button>
             </div>
-            <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>Ingresa una contraseña para acceder al panel como administrador.</p>
-            <input value={adminPass} onChange={e=>setAdminPass(e.target.value)} placeholder="Contraseña de administrador"
-              type="password" onKeyDown={e=>e.key==="Enter"&&handleAdminSubmit()}
-              style={{ marginBottom:24, fontSize:16, padding:"12px 16px" }}/>
-            {adminError && <p style={{ color:C.red, fontSize:12, marginBottom:12 }}>{adminError}</p>}
+            <p style={{ color:C.muted, fontSize:13, marginBottom:20 }}>El acceso al panel se valida después, en la pantalla de administrador.</p>
             <div style={{ display:"flex", gap:10 }}>
               <Btn onClick={() => setIsAdmin(false)} variant="secondary" style={{ flex:1, justifyContent:"center" }}>← Volver</Btn>
-              <Btn onClick={handleAdminSubmit} variant="primary" style={{ flex:2, justifyContent:"center" }}>Entrar →</Btn>
+              <Btn onClick={onAdminLogin} variant="primary" style={{ flex:2, justifyContent:"center" }}>Entrar →</Btn>
             </div>
           </Card>
         )}

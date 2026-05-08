@@ -65,7 +65,12 @@
 // ADMIN APP — Real-time Leaderboard with Polling + Storage Events
 // ═══════════════════════════════════════════════════════════════
 
+const ADMIN_PASSWORD = "nextgrupap";
+
 function AdminApp() {
+  const [adminUnlocked, setAdminUnlocked] = useState(() => sessionStorage.getItem("dq_admin_auth") === "1");
+  const [adminPass, setAdminPass] = useState("");
+  const [adminError, setAdminError] = useState("");
   const [teams, setTeams] = useState([]);
   const [connected, setConnected] = useState(false);
   const [useLocalStorage, setUseLocalStorage] = useState(false);
@@ -98,6 +103,45 @@ function AdminApp() {
     if ((b.xp || 0) !== (a.xp || 0)) return (b.xp || 0) - (a.xp || 0);
     return getTeamRaceElapsedMs(a) - getTeamRaceElapsedMs(b);
   });
+
+  const handleAdminUnlock = () => {
+    if (adminPass.trim() === ADMIN_PASSWORD) {
+      sessionStorage.setItem("dq_admin_auth", "1");
+      setAdminUnlocked(true);
+      setAdminError("");
+      setAdminPass("");
+      return;
+    }
+
+    setAdminError("Contraseña incorrecta");
+  };
+
+  const authGate = !adminUnlocked ? (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, padding: 24 }}>
+      <Card style={{ width: 520, maxWidth: "96vw", padding: 28 }} glow={C.purple}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ fontSize: 54, marginBottom: 8 }}>🛡️</div>
+          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8 }}>Acceso de administrador</h1>
+          <p style={{ color: C.muted, fontSize: 14 }}>Ingresa la contraseña para abrir el panel.</p>
+        </div>
+
+        <input
+          value={adminPass}
+          onChange={e => setAdminPass(e.target.value)}
+          placeholder="Contraseña de administrador"
+          type="password"
+          onKeyDown={e => e.key === "Enter" && handleAdminUnlock()}
+          style={{ width: "100%", marginBottom: 12, fontSize: 16, padding: "12px 16px" }}
+        />
+
+        {adminError && <p style={{ color: C.red, fontSize: 12, marginBottom: 12 }}>{adminError}</p>}
+
+        <Btn onClick={handleAdminUnlock} variant="primary" size="lg" style={{ width: "100%", justifyContent: "center" }}>
+          Entrar al panel →
+        </Btn>
+      </Card>
+    </div>
+  ) : null;
 
   // POLLING: Auto-refresh leaderboard every 1 second
   useEffect(() => {
@@ -346,6 +390,8 @@ function AdminApp() {
   };
 
   const leaderboard = sortTeams(teams);
+
+  if (authGate) return authGate;
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.bg }}>
