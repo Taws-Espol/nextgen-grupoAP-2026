@@ -286,7 +286,7 @@ const MISSION_CHALLENGES = [
     question: "Si eliminamos a los 2 YouTubers más ricos, ¿qué pasa con el resto? ¿Cuál sería el nuevo ingreso 'normal' de la lista?",
     tools: ["datasets"],
     answerType: "number",
-    answer: 0.9,
+    answer: 1.1,
     tolerance: 0.2,
     feedback: "Aprende sobre el sesgo eliminando valores extremos del dataset.",
     xp: 50,
