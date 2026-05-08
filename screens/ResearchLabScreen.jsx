@@ -61,14 +61,91 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
   const [earnedXP, setEarnedXP] = useState(initialProgress?.earnedXP ?? 0);
   const [showXPAmount, setShowXPAmount] = useState(null);
   const [showFullTable, setShowFullTable] = useState(false);
+  const [submitted, setSubmitted] = useState(initialProgress?.submitted ?? false);
 
   useEffect(() => {
     if (!viewOnly) {
-      onProgress?.({ step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP });
+      onProgress?.({ step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP, submitted });
     }
-  }, [step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP, viewOnly]);
+  }, [step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP, submitted, viewOnly]);
 
   const giveXP = (n) => { setEarnedXP(p => p + n); setShowXPAmount(n); };
+
+  const InteractiveScatterChart = ({ data, xKey, yKey, compact = false }) => {
+    const [hoverIdx, setHoverIdx] = useState(null);
+    const valid = data
+      .map(d => ({ ...d, __x: Number(d[xKey]), __y: Number(d[yKey]) }))
+      .filter(d => Number.isFinite(d.__x) && Number.isFinite(d.__y));
+    if (!valid.length) return <div style={{ color:C.muted }}>Sin datos válidos</div>;
+
+    const xs = valid.map(d=>d.__x), ys = valid.map(d=>d.__y);
+    const xMin = Math.min(...xs), xMax = Math.max(...xs), yMin = Math.min(...ys), yMax = Math.max(...ys);
+    const W = compact ? 280 : 420, H = compact ? 140 : 200, pad = compact ? 30 : 40;
+    const px = x => xMax === xMin ? W/2 : pad + (x - xMin)/(xMax - xMin) * (W - 2*pad);
+    const py = y => yMax === yMin ? H/2 : H - pad - (y - yMin)/(yMax - yMin) * (H - 2*pad);
+    const cats = [...new Set(valid.map(d => d.category))];
+    const catColors = [C.purple, C.cyan, C.green, C.yellow, C.red, C.pink, "#F97316", "#3B82F6"];
+
+    return (
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block" }}>
+        <line x1={pad} x2={pad} y1={pad} y2={H-pad} stroke={C.border} strokeWidth={0.5}/>
+        <line x1={pad} x2={W-pad} y1={H-pad} y2={H-pad} stroke={C.border} strokeWidth={0.5}/>
+        {valid.map((d, i) => {
+          const ci = cats.indexOf(d.category);
+          const col = catColors[ci % catColors.length];
+          const isHov = hoverIdx === i;
+          return (
+            <g key={i} style={{ cursor:"pointer" }} onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
+              {isHov && <circle cx={px(d.__x)} cy={py(d.__y)} r={compact ? 10 : 14} fill={col} opacity={0.12}/>}
+              <circle cx={px(d.__x)} cy={py(d.__y)} r={isHov ? (compact ? 5 : 7) : (compact ? 3.5 : 5)} fill={col} opacity={0.85} style={{ transition:"r 0.12s" }}/>
+              {isHov && <text x={px(d.__x)+8} y={py(d.__y)-8} fill={C.text} fontSize={compact ? 8 : 10} fontFamily="Space Grotesk" fontWeight={700}>{d.channel.slice(0, compact ? 12 : 18)}</text>}
+            </g>
+          );
+        })}
+      </svg>
+    );
+  };
+
+  const renderEvidencePreview = (ev, compact = false) => {
+    const previewStyle = {
+      width: '100%',
+      height: compact ? 90 : 120,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      padding: compact ? 4 : 0,
+      boxSizing: 'border-box',
+    };
+
+    if (!ev) return <div style={{ color:C.muted }}>Vista previa no disponible</div>;
+
+    if (ev.type === 'scatter') {
+      if (!ev.xKey || !ev.yKey) return <div style={{ color:C.muted }}>Faltan ejes para el scatter</div>;
+      return <div style={previewStyle}><InteractiveScatterChart data={YT_DATA} xKey={ev.xKey} yKey={ev.yKey} compact={compact} /></div>;
+    }
+
+    if (ev.type === 'bar') {
+      const metricKey = ev.key || 'views';
+      const top = ev.top || 10;
+      const barData = [...YT_DATA]
+        .sort((a, b) => Number(b[metricKey]) - Number(a[metricKey]))
+        .slice(0, top);
+      return <div style={previewStyle}><BarChart data={barData} xKey="channel" yKey={metricKey} color={C.purple} /></div>;
+    }
+
+    if (ev.type === 'pie') {
+      return <div style={previewStyle}><PieChart data={YT_DATA} groupKey={ev.key || 'category'} /></div>;
+    }
+
+    if (ev.type === 'line') {
+      if (!ev.xKey || !ev.yKey) return <div style={{ color:C.muted }}>Faltan ejes para la línea</div>;
+      const lineData = YT_DATA.filter(d => Number.isFinite(Number(d[ev.xKey])) && Number.isFinite(Number(d[ev.yKey])));
+      return <div style={previewStyle}><LineChart data={lineData} xKey={ev.xKey} yKey={ev.yKey} color={C.cyan} /></div>;
+    }
+
+    return <div style={{ color:C.muted }}>Vista previa no disponible</div>;
+  };
 
   // NOTE: removed timed rehearsal — practice is untimed
 
@@ -98,7 +175,22 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
       evidenceCount: generatedCharts.length,
     };
     giveXP(slideScore);
-    onComplete?.({ xp: totalXP, pitchSummary });
+    setSubmitted(true);
+    onProgress?.({ step, selectedTheme, xVar, yVar, slides, generatedCharts, earnedXP: totalXP, submitted: true });
+    onComplete?.({
+      xp: totalXP,
+      pitchSummary,
+      phaseFiveProgress: {
+        step,
+        selectedTheme,
+        xVar,
+        yVar,
+        slides,
+        generatedCharts,
+        earnedXP: totalXP,
+        submitted: true,
+      },
+    });
   };
 
   // STEP 0: Intro
@@ -117,7 +209,6 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
           </div>
           <div style={{ display:"flex", gap:10, marginTop:18 }}>
             <Btn variant="primary" onClick={()=>setStep(1)}>Empezar →</Btn>
-            <Btn variant="ghost" onClick={()=>{ setSlides([{ title:'Introducción', bullets:['Contexto'], evidence:[] }, { title:'Hallazgo', bullets:['Punto clave'], evidence:[] }, { title:'Impacto', bullets:['Qué hacemos con esto'], evidence:[] }]); setStep(2); }}>Plantilla rápida</Btn>
           </div>
         </Card>
       </div>
@@ -181,6 +272,11 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
           <h2 style={{ margin:6, fontWeight:800 }}>Sigan los pasos: hipótesis → evidencia → síntesis</h2>
           <div style={{ color:C.muted }}>No adivinen: aquí les proponemos qué comprobar y cómo capturarlo para la presentación.</div>
         </div>
+        {submitted && (
+          <div style={{ display:'flex', justifyContent:'flex-end' }}>
+            <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>
+          </div>
+        )}
         <div>
           <div style={{ color:C.muted, fontSize:13 }}>Variables (para scatter):</div>
           <div style={{ display:'flex', gap:8, marginTop:6 }}>
@@ -244,10 +340,10 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
             <div style={{ marginTop:12 }}>
               <div style={{ fontSize:12, color:C.muted, marginBottom:6 }}>Gráfico principal (ampliado)</div>
               <div style={{ border:`1px solid ${C.border}`, borderRadius:10, padding:12, minHeight:360 }}>
-                <ScatterChart data={YT_DATA} xKey={xVar} yKey={yVar} showLabels={true} style={{ width:'100%', height:340 }} />
+                <InteractiveScatterChart data={YT_DATA} xKey={xVar} yKey={yVar} compact={false} />
               </div>
               <div style={{ marginTop:10, fontSize:13, color:C.muted }}>
-                ¿Qué buscar en el gráfico? Busquen tendencias (sube/ baja), outliers, agrupamientos y relaciones fuertes entre X e Y. Anoten 2–3 observaciones claras.
+                ¿Qué buscar en el gráfico? Busquen tendencias (sube/ baja), outliers, agrupamientos y relaciones fuertes entre X e Y. Anoten 2–3 observaciones claras. Pasa el cursor sobre los puntos para ver el nombre del canal.
               </div>
             </div>
           </Card>
@@ -295,7 +391,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
                   {g.desc && <div style={{ fontSize:12, color:C.muted, marginTop:6 }}>{g.desc}</div>}
                   <div style={{ marginTop:8 }}>
                     <div style={{ width:'100%', height:120, border:`1px solid ${C.border}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      {g.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={g.xKey||xVar} yKey={g.yKey||yVar} small /> : <div style={{ color:C.muted }}>Vista previa</div>}
+                      {renderEvidencePreview(g, true)}
                     </div>
                     <div style={{ display:'flex', gap:8, marginTop:8 }}>
                       <select onChange={e=> { const slideIdx = parseInt(e.target.value); if(!isNaN(slideIdx)) { updateSlide(slideIdx, { evidence: [...(slides[slideIdx].evidence||[]), g] }); } }}>
@@ -327,7 +423,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
           <h2 style={{ margin:6, fontWeight:800 }}>Vista previa de la presentación</h2>
           <div style={{ color:C.muted, fontSize:13 }}>Esta vista es solo lectura. Sirve para revisar el contenido ya preparado sin editarlo ni reenviarlo.</div>
         </div>
-        <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>
+        {submitted && <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>}
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 420px', gap:12 }}>
@@ -350,7 +446,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
                     (sl.evidence||[]).map((ev,ei) => (
                       <div key={ei} style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
                         <div style={{ width:120, height:64, border:`1px solid ${C.border}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          {ev.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={ev.xKey||xVar} yKey={ev.yKey||yVar} small /> : <div style={{ color:C.muted }}>Preview</div>}
+                          {renderEvidencePreview(ev, true)}
                         </div>
                         <div style={{ flex:1 }}>{ev.type.toUpperCase()} {ev.key||''} {ev.xKey?`· ${ev.xKey} vs ${ev.yKey}`:''}</div>
                       </div>
@@ -380,19 +476,19 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
                     <div key={ei} style={{ width:180, border:`1px solid ${C.border}`, borderRadius:8, padding:8, background:C.surface }}>
                       <div style={{ fontSize:11, color:C.muted, marginBottom:6 }}>{ev.type.toUpperCase()}</div>
                       <div style={{ width:'100%', height:90, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        {ev.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={ev.xKey||xVar} yKey={ev.yKey||yVar} small /> : <div style={{ color:C.muted }}>Vista</div>}
+                        {renderEvidencePreview(ev, true)}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-            <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginTop:10 }}>
               <div style={{ display:'flex', gap:8 }}>
                 <Btn size='sm' variant='ghost' onClick={()=>setCurrentSlide(s => Math.max(0, s-1))}>←</Btn>
                 <Btn size='sm' variant='ghost' onClick={()=>setCurrentSlide(s => Math.min(slides.length-1, s+1))}>→</Btn>
               </div>
-              <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Resumen</Btn>
+              {submitted && <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>}
             </div>
           </Card>
         </div>
@@ -410,7 +506,6 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
           <div style={{ color:C.muted, fontSize:13 }}>Cada módulo tiene un título, bullets y evidencias. Usen una plantilla para comenzar rápido.</div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>
           <select onChange={e=> applyTemplate(e.target.value)} style={{ padding:8, background:C.surface, border:`1px solid ${C.border}` }}>
             <option value=''>Aplicar plantilla...</option>
             {TEMPLATES.map(t=> <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -445,7 +540,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
                   {(sl.evidence||[]).map((ev,ei) => (
                     <div key={ei} style={{ display:'flex', alignItems:'center', gap:8, marginTop:8 }}>
                       <div style={{ width:120, height:64, border:`1px solid ${C.border}`, borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        {ev.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={ev.xKey||xVar} yKey={ev.yKey||yVar} small /> : <div style={{ color:C.muted }}>Preview</div>}
+                        {renderEvidencePreview(ev, true)}
                       </div>
                       <div style={{ flex:1 }}>{ev.type.toUpperCase()} {ev.key||''} {ev.xKey?`· ${ev.xKey} vs ${ev.yKey}`:''}</div>
                       <Btn size='sm' variant='ghost' onClick={()=> { const copy = [...(sl.evidence||[])]; copy.splice(ei,1); updateSlide(i,{ evidence: copy }); }}>Quitar</Btn>
@@ -475,7 +570,7 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
                           <div key={ei} style={{ width:180, border:`1px solid ${C.border}`, borderRadius:8, padding:8, background:C.surface }}>
                             <div style={{ fontSize:11, color:C.muted, marginBottom:6 }}>{ev.type.toUpperCase()}</div>
                             <div style={{ width:'100%', height:90, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                              {ev.type === 'scatter' ? <ScatterChart data={YT_DATA} xKey={ev.xKey||xVar} yKey={ev.yKey||yVar} small /> : <div style={{ color:C.muted }}>Vista</div>}
+                              {renderEvidencePreview(ev, true)}
                             </div>
                           </div>
                         ))}
@@ -525,8 +620,8 @@ function ResearchLabScreen({ team, initialProgress, onProgress, onComplete, onNa
           </div>
           <div style={{ display:'flex', gap:8 }}>
             <Btn variant='secondary' onClick={()=>setStep(3)}>← Editar</Btn>
-            <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Resumen</Btn>
-            <Btn variant='primary' onClick={()=>{ completeAndSubmit(); }}>Enviar pitch y completar fase</Btn>
+            {!submitted && <Btn variant='primary' onClick={()=>{ completeAndSubmit(); }}>Enviar pitch</Btn>}
+            {submitted && <Btn variant='ghost' onClick={()=>onNav && onNav('resumen')}>↩ Volver al resumen</Btn>}
           </div>
         </div>
       </Card>

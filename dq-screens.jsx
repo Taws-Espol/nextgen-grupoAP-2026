@@ -941,11 +941,19 @@ function QuizScreen({ onComplete, initialProgress=null, onProgress, autoAdvance=
     if (!autoAdvance || !done) return;
     if (autoAdvancedRef.current) return;
     autoAdvancedRef.current = true;
+    console.log('QuizScreen: autoAdvance triggered, calling onComplete with', totalXP);
     const t = setTimeout(() => {
       onComplete && onComplete(totalXP);
     }, 700);
     return () => clearTimeout(t);
   }, [done, totalXP, autoAdvance, onComplete]);
+
+  // Reset autoAdvance ref when necessary to allow re-trigger
+  useEffect(() => {
+    if (!done) {
+      autoAdvancedRef.current = false;
+    }
+  }, [done]);
 
   const cellColors = ["#9D6EF8", "#22D3EE", "#4ADE80", "#F59E0B"];
 
@@ -1053,8 +1061,8 @@ function QuizScreen({ onComplete, initialProgress=null, onProgress, autoAdvance=
             <div style={{ color: C.muted, fontSize: 14 }}>¡Ganados en El Alquimista!</div>
             {streak > 1 && <div style={{ marginTop: 8, color: C.green, fontWeight: 700 }}>🔥 Racha final: {streak} correctas</div>}
           </div>
-          <Btn onClick={() => onComplete(totalXP)} variant="success" size="lg" style={{ width: "100%", justifyContent: "center" }}>
-            Siguiente fase → Detective de patrones 📊
+          <Btn variant="success" size="lg" onClick={() => onComplete && onComplete(totalXP)} style={{ width: "100%", justifyContent: "center" }}>
+            Continuar a Fase 3 →
           </Btn>
         </Card>
       </div>
@@ -1338,7 +1346,8 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
   const [finished, setFinished] = useState(initialProgress?.finished ?? false);
   const autoAdvancedRef = useRef(false);
 
-  const mission = MISSION_CHALLENGES[missionIdx];
+  const ACTIVE_MISSIONS = MISSION_CHALLENGES.slice(0,5);
+  const mission = ACTIVE_MISSIONS[missionIdx];
   const missionContext = getMissionContext(mission);
 
   useEffect(() => {
@@ -1400,7 +1409,7 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
   };
 
   const nextMission = () => {
-    if (missionIdx >= MISSION_CHALLENGES.length - 1) {
+    if (missionIdx >= ACTIVE_MISSIONS.length - 1) {
       setFinished(true);
       return;
     }
@@ -1424,7 +1433,7 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
             <div style={{ color:C.muted, fontSize:13 }}>Ganados en la fase 3</div>
           </div>
           <Btn onClick={() => onComplete && onComplete(earnedXP)} variant="success" size="lg" style={{ width:"100%", justifyContent:"center" }}>
-            Completar fase 3 →
+            Continuar a Fase 4 →
           </Btn>
         </Card>
       </div>
@@ -1435,7 +1444,7 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
     <div style={{ padding:28, flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:20 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, flexWrap:"wrap" }}>
         <div>
-          <Chip label={`Misión ${missionIdx + 1} de ${MISSION_CHALLENGES.length}`} color={C.green} />
+          <Chip label={`Misión ${missionIdx + 1} de ${ACTIVE_MISSIONS.length}`} color={C.green} />
           <h1 style={{ fontSize:24, fontWeight:900, marginTop:8 }}>🕵️ Fase 3: Misiones libres</h1>
           <p style={{ color:C.muted, fontSize:14, marginTop:6 }}>Primero el problema, luego la pregunta, y después a trastear la herramienta para encontrar la respuesta.</p>
         </div>
@@ -1447,7 +1456,7 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
       </div>
 
       <div style={{ height:4, background:"rgba(255,255,255,0.06)", borderRadius:2 }}>
-        <div style={{ width:`${(missionIdx / MISSION_CHALLENGES.length) * 100}%`, height:"100%", background:`linear-gradient(90deg,${C.green},${C.cyan})`, borderRadius:2, transition:"width 0.4s" }} />
+        <div style={{ width:`${(missionIdx / ACTIVE_MISSIONS.length) * 100}%`, height:"100%", background:`linear-gradient(90deg,${C.green},${C.cyan})`, borderRadius:2, transition:"width 0.4s" }} />
       </div>
 
       <Card className="fade-in" style={{ padding:28 }} glow={C.green}>
@@ -1514,7 +1523,7 @@ function MissionScreen({ team, onComplete, onNav, initialMissionIdx=0, initialPr
                 </Btn>
                 <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
                   <Btn variant="primary" size="sm" onClick={handleSubmit} disabled={!!feedback}>Validar respuesta</Btn>
-                  {feedback && <Btn variant="success" size="sm" onClick={nextMission}>{missionIdx === MISSION_CHALLENGES.length - 1 ? "Finalizar fase 3" : "Siguiente misión"}</Btn>}
+                  {feedback && <Btn variant="success" size="sm" onClick={nextMission}>{missionIdx === ACTIVE_MISSIONS.length - 1 ? "Finalizar fase 3" : "Siguiente misión"}</Btn>}
                 </div>
               </div>
             </div>
@@ -1786,7 +1795,7 @@ function CinematicGuideOverlay({ step, total, accent, onNext, onSkip }) {
   }
 }
 
-function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToSummary, onBackToMission, phaseThreeActive=false, freeMode=false, tutorialMode=false, initialProgress=null, onProgress }) {
+function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToSummary, onBackToMission, phaseThreeActive=false, phaseFiveSubmitted=false, freeMode=false, tutorialMode=false, initialProgress=null, onProgress }) {
   const [chartType, setChartType] = useState(initialProgress?.chartType || "bar");
   const [xAxis, setXAxis] = useState(initialProgress?.xAxis ?? null);
   const [yAxis, setYAxis] = useState(initialProgress?.yAxis ?? null);
@@ -1917,8 +1926,8 @@ function ChartEditorScreen({ onComplete, onVisit, onBackToMap, onBackToSummary, 
           {tutorialMode && onBackToMap && (
             <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>
           )}
-          {onBackToSummary && (
-            <Btn variant="ghost" size="sm" onClick={onBackToSummary}>← Volver al resumen</Btn>
+          {phaseFiveSubmitted && onBackToSummary && (
+            <Btn variant="ghost" size="sm" onClick={onBackToSummary}>↩ Volver al resumen</Btn>
           )}
           {phaseThreeActive && onBackToMission && (
             <Btn variant="success" size="sm" onClick={onBackToMission}>🕵️ Volver a misiones</Btn>
@@ -2365,9 +2374,7 @@ function PitchBuilderScreen({ team, onComplete, autoAdvance=true }) {
           </div>
           <div style={{ display:"flex", gap:10, justifyContent:"center", flexWrap:"wrap" }}>
             <Btn onClick={() => { setPresSlide(0); setPres(true); }} variant="secondary">▶ Ver presentación final</Btn>
-            <Btn onClick={() => { onComplete&&onComplete(earnedXP); }} variant="success" size="lg">
-              Completar Fase 5 +{earnedXP} XP ⚡
-            </Btn>
+            {/* Envío/aprobación automático vía flujo; botón manual eliminado */}
           </div>
         </Card>
       )}
@@ -2584,6 +2591,18 @@ function AdminScreen() {
 // ═══════════════════════════════════════════
 
 function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, phaseOneTutorialProgress={ datasets:false, graficos:false, confirmed:false }, onConfirmPhaseOneTutorial }) {
+  const completePhaseRef = useRef(false);
+
+  useEffect(() => {
+    if (phaseOneTutorialProgress.confirmed && !completePhaseRef.current && team.phase === 1) {
+      completePhaseRef.current = true;
+      const t = setTimeout(() => {
+        onPhaseComplete && onPhaseComplete();
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [phaseOneTutorialProgress.confirmed, team.phase, onPhaseComplete]);
+
   const tutorialStep = !phaseOneTutorialProgress.datasets
     ? 1
     : !phaseOneTutorialProgress.graficos
@@ -2749,13 +2768,8 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                     </span>
                   </div>
 
-                  <div style={{ display:"flex", gap:10, marginTop:14 }}>
-                    <Btn
-                      variant="secondary"
-                      onClick={() => onPhaseComplete && onPhaseComplete()}
-                    >
-                      Completar Fase 1 y desbloquear Fase 2 →
-                    </Btn>
+                    <div style={{ display:"flex", gap:10, marginTop:14 }}>
+                            {/* botón de finalización manual eliminado: la fase se completa mediante el flujo */}
                   </div>
                 </div>
               ) : isActive ? (
@@ -2785,12 +2799,7 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
                       📈 GRAFICOS
                     </Btn>
                   )}
-                  <Btn
-                    variant="secondary"
-                    onClick={() => onPhaseComplete && onPhaseComplete()}
-                  >
-                    Fase completada →
-                  </Btn>
+                  {/* Finalización manual removida */}
                 </div>
               ) : null}
               {isCompleted && (
@@ -2840,7 +2849,7 @@ function MapaScreen({ team, onNav, onPhaseComplete, phaseOneTutorialReady=true, 
   );
 }
 
-function DatasetsScreen({ onVisit, onBackToMap, onBackToSummary, onBackToMission, phaseThreeActive=false, tutorialMode=false, initialProgress=null, onProgress }) {
+function DatasetsScreen({ onVisit, onBackToMap, onBackToSummary, onBackToMission, phaseThreeActive=false, phaseFiveSubmitted=false, tutorialMode=false, initialProgress=null, onProgress }) {
   const [search, setSearch] = useState(initialProgress?.search || "");
   const [category, setCategory] = useState(initialProgress?.category || "all");
   const [country, setCountry] = useState(initialProgress?.country || "all");
@@ -2968,7 +2977,7 @@ function DatasetsScreen({ onVisit, onBackToMap, onBackToSummary, onBackToMission
         <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
           <Chip label={`${sorted.length} filas visibles`} color={C.cyan} />
           {tutorialMode && onBackToMap && <Btn variant="ghost" size="sm" onClick={onBackToMap}>← Volver al mapa</Btn>}
-          {onBackToSummary && <Btn variant="ghost" size="sm" onClick={onBackToSummary}>← Volver al resumen</Btn>}
+          {phaseFiveSubmitted && onBackToSummary && <Btn variant="ghost" size="sm" onClick={onBackToSummary}>↩ Volver al resumen</Btn>}
           {phaseThreeActive && onBackToMission && <Btn variant="success" size="sm" onClick={onBackToMission}>🕵️ Volver a misiones</Btn>}
         </div>
       </div>

@@ -197,8 +197,28 @@ function App() {
     }
   }, [user]);
 
-  const syncTeamState = (updatedTeam, xpEarned = 0) => {
+  const syncTeamState = (updatedTeam, xpEarned = 0, extraSessionData = {}) => {
     setUser(prev => ({ ...prev, team: updatedTeam }));
+
+    // Always save to localStorage as fallback
+    const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
+    const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
+    if (!updated.some(t => t.id === updatedTeam.id)) {
+      updated.push(updatedTeam);
+    }
+    localStorage.setItem("dq_teams", JSON.stringify(updated));
+
+    // Update session with new team data
+    localStorage.setItem("dq_session_v1", JSON.stringify({
+      user: { role: "participant", team: updatedTeam },
+      screen: "mapa",
+      phaseOneTutorialProgress,
+      missionProgress,
+      phaseTwoProgress,
+      phaseThreeProgress,
+      phaseFourProgress,
+      phaseFiveProgress: extraSessionData.phaseFiveProgress || phaseFiveProgress,
+    }));
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -208,13 +228,6 @@ function App() {
         xpEarned,
         team: updatedTeam
       }));
-      return;
-    }
-
-    if (useLocalStorage) {
-      const teams = JSON.parse(localStorage.getItem("dq_teams") || "[]");
-      const updated = teams.map(t => t.id === updatedTeam.id ? updatedTeam : t);
-      localStorage.setItem("dq_teams", JSON.stringify(updated));
     }
   };
 
@@ -389,7 +402,10 @@ function App() {
       return;
     }
     const xpEarned = Number(result?.xp || 0);
-    completePhaseWithScore(5, xpEarned, { pitchSummary: result?.pitchSummary || null });
+    completePhaseWithScore(5, xpEarned, {
+      pitchSummary: result?.pitchSummary || null,
+      phaseFiveProgress: result?.phaseFiveProgress || phaseFiveProgress,
+    });
   };
 
   if (!user) {
@@ -416,6 +432,7 @@ function App() {
               phaseThreeActive={team.phase === 3}
               onBackToMission={() => setScreen("analysis")}
               initialProgress={phaseThreeProgress.datasets}
+                phaseFiveSubmitted={Boolean(phaseFiveProgress?.submitted)}
               onProgress={(nextProgress) => setPhaseThreeProgress(prev => ({ ...prev, datasets: nextProgress }))}
             />
           );
@@ -431,6 +448,7 @@ function App() {
               phaseThreeActive={team.phase === 3}
               onBackToMission={() => setScreen("analysis")}
               initialProgress={phaseThreeProgress.chart}
+                phaseFiveSubmitted={Boolean(phaseFiveProgress?.submitted)}
               onProgress={(nextProgress) => setPhaseThreeProgress(prev => ({ ...prev, chart: nextProgress }))}
               onComplete={() => {}}
             />
@@ -441,6 +459,7 @@ function App() {
               initialProgress={phaseTwoProgress}
               onProgress={(nextProgress) => setPhaseTwoProgress(prev => ({ ...prev, ...nextProgress }))}
               onComplete={(xp) => handleQuizComplete(xp)}
+              autoAdvance={true}
             />
           );
         case "analysis":
